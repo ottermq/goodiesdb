@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/andrelcunha/goodiesdb/internal/core/command"
 	"github.com/andrelcunha/goodiesdb/internal/core/store"
 	"github.com/andrelcunha/goodiesdb/internal/persistence/aof"
 	"github.com/andrelcunha/goodiesdb/internal/persistence/rdb"
@@ -28,6 +29,7 @@ type Server struct {
 	shutdownChan             chan struct{}
 	dataDir                  string
 	Protocol                 protocol.Protocol
+	commandRegistry          *command.Registry
 }
 
 // NewServer creates a new server
@@ -38,19 +40,22 @@ func NewServer(config *Config) *Server {
 		fmt.Printf("Error creating data directory: %v\n", err)
 		os.Exit(1)
 	}
+	protocol := &resp2.RESP2Protocol{}
 
 	aofChan := make(chan string, 100)
 	s := store.NewStore(aofChan)
-
-	return &Server{
+	server := &Server{
 		store:                    s,
 		config:                   config,
 		authenticatedConnections: make(map[net.Conn]bool),
 		connectionDbs:            make(map[net.Conn]int),
 		shutdownChan:             make(chan struct{}),
 		dataDir:                  config.DataDir,
-		Protocol:                 &resp2.RESP2Protocol{},
+		Protocol:                 protocol,
+		commandRegistry:          command.NewRegistry(),
 	}
+	s.SetProtocol(protocol)
+	return server
 }
 
 // Start starts the server
@@ -90,7 +95,6 @@ func (s *Server) Start() error {
 			fmt.Println("Error accepting connection:", err)
 			continue
 		}
-		// go s.handleConnection(conn)
 		go s.handleConn(conn)
 	}
 }
@@ -146,18 +150,26 @@ func (s *Server) executeCommand(conn net.Conn, request protocol.RESPValue) (prot
 	if !ok {
 		return protocol.ErrorString("ERR expected array"), fmt.Errorf("expected array, got %T", request)
 	}
+	parts := convertArrayToStrings(arr)
 
-	rawParts := arr
-	if len(rawParts) == 0 {
+	if len(parts) == 0 {
 		return protocol.SimpleString(""), nil
 	}
 
-	parts := convertArrayToStrings(rawParts)
-	fmt.Printf("Executing command: %s %v\n", parts[0], parts[1:])
-
+	cmdName := strings.ToUpper(parts[0])
+	args := parts[1:]
+	fmt.Printf("Executing command: %s %v\n", cmdName, args)
 	dbIndex := s.getCurrentDb(conn)
+	/* Using registered commands*/
 
-	switch strings.ToUpper(parts[0]) {
+	cmd, ok := s.commandRegistry.Get(cmdName)
+	if ok {
+		fmt.Printf("invoking %s", cmd.Name())
+		return s.invokeCommand(cmd, args, conn, dbIndex)
+	}
+	// if !ok, probably not registered, use switch-case (will be removed later)
+
+	switch cmdName {
 
 	case "AUTH":
 		if len(parts) != 2 {
@@ -513,6 +525,26 @@ func (s *Server) executeCommand(conn net.Conn, request protocol.RESPValue) (prot
 		return protocol.ErrorString("ERR unknown command '" + parts[0] + "'"), nil
 	}
 	return nil, nil
+}
+
+func (s *Server) invokeCommand(cmd command.Command, args []string, conn net.Conn, dbIndex int) (protocol.RESPValue, error) {
+	if err := cmd.Validate(args); err != nil {
+		return protocol.ErrorString("ERR " + err.Error()), nil
+	}
+
+	// Check authentication
+	if cmd.RequiresAuth() && !s.isAuthenticates(conn) {
+		return protocol.ErrorString("NOAUTH Authentication required"), nil
+	}
+
+	ctx := &command.Context{
+		Store:     s.store,
+		DBIndex:   dbIndex,
+		Conn:      conn,
+		Timestamp: time.Now(),
+	}
+
+	return cmd.Execute(ctx, args)
 }
 
 // Helper functions
