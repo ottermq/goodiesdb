@@ -2,21 +2,24 @@ package store
 
 import (
 	"fmt"
+	"maps"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/andrelcunha/goodiesdb/internal/protocol"
 	"github.com/andrelcunha/goodiesdb/internal/utils/slice"
 )
 
 var ErrNoSuchKey = fmt.Errorf("no such key")
 
 type Store struct {
-	data    []map[string]*Value
-	mu      sync.RWMutex
-	aofChan chan string
+	data     []map[string]*Value
+	mu       sync.RWMutex
+	aofChan  chan string
+	Protocol protocol.Protocol
 }
 
 // NewStore creates a new store
@@ -29,6 +32,10 @@ func NewStore(aofChan chan string) *Store {
 		data:    data,
 		aofChan: aofChan,
 	}
+}
+
+func (s *Store) SetProtocol(p protocol.Protocol) {
+	s.Protocol = p
 }
 
 func (s *Store) Count() int {
@@ -45,14 +52,10 @@ func (s *Store) GetSnapshot() []map[string]*Value {
 
 	// Create deep copies to avoid data races
 	dataCopy := make([]map[string]*Value, len(s.data))
-
 	for i := range s.data {
 		dataCopy[i] = make(map[string]*Value)
 
-		for k, v := range s.data[i] {
-			dataCopy[i][k] = v
-		}
-
+		maps.Copy(dataCopy[i], s.data[i])
 	}
 
 	return dataCopy
