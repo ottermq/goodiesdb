@@ -161,3 +161,36 @@ func (v *Value) GetTTL() time.Duration {
 	}
 	return time.Until(*v.ExpiresAt)
 }
+
+func (v *Value) ToString() (string, error) {
+	switch v.Type {
+	case TypeString:
+		return v.AsString()
+	case TypeList:
+		list, err := v.AsList()
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%v", list), nil
+	case TypeHash:
+		hash, err := v.AsHash()
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%v", hash), nil
+	case TypeSet:
+		set, err := v.AsSet()
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%v", set), nil
+	case TypeZSet:
+		zset, err := v.AsZSet()
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%v", zset), nil
+	default:
+		return "", fmt.Errorf("unknown value type")
+	}
+}
