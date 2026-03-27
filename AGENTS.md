@@ -92,6 +92,25 @@ If you are resuming the command registry work, start here:
 GOCACHE=/tmp/gocache go test ./...
 ```
 
+## Testing strategy
+
+GoodiesDB was historically validated manually by connecting with a Redis client and trying commands interactively. That revealed the most important testing constraint in this project:
+
+- the behavior that matters most is the behavior seen by Redis clients
+
+Because of that, the preferred testing strategy going forward is layered:
+
+- unit tests for store-level behavior and low-level primitives
+- integration tests that boot GoodiesDB and exercise it through Redis client libraries
+
+The integration layer should become the main compatibility safety net because it verifies:
+
+- request parsing
+- reply encoding
+- command semantics
+- nil and error behavior
+- database selection and connection behavior
+
 ## Working agreements for future agents
 
 - Do not treat Redis parity as the main goal; client compatibility is the main goal.

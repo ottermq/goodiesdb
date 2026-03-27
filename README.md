@@ -75,6 +75,7 @@ For project context and contributor guidance, start with:
 - `docs/ARCHITECTURE.md`
 - `docs/PROJECT_STATUS.md`
 - `docs/ROADMAP.md`
+- `docs/TESTING.md`
 - `docs/refactoring/COMMAND_REGISTRY_REFACTOR.md`
 
 ## License

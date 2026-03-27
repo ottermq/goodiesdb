@@ -72,13 +72,28 @@ If you are contributing on or after this branch, read these first:
 
 At minimum, verify the areas you changed.
 
+GoodiesDB should increasingly rely on two complementary test layers:
+
+- unit tests for internals such as store operations and persistence helpers
+- integration tests that talk to a running GoodiesDB instance through Redis client libraries
+
+The second category is especially important because the project goal is compatibility with common Redis clients, not just internal correctness.
+
 Examples:
 
 - Store changes: `go test ./internal/core/store/...`
 - Persistence changes: `go test ./internal/persistence/...`
 - Cross-cutting behavior: `go test ./...`
 
-When possible, validate behavior from a Redis client as well, especially for argument validation and reply shape.
+When possible, validate behavior from a Redis client library as well, especially for:
+
+- argument validation
+- reply shape
+- nil handling
+- error behavior
+- connection-scoped state such as selected database
+
+Manual testing in a Redis client is still useful while exploring, but automated client-library integration tests should become the default regression safety net.
 
 ## Style notes
 

@@ -107,10 +107,32 @@ Result:
 Recommended order:
 
 1. Fix the deadlock and restore a passing baseline.
-2. Add tests for the command registry path.
-3. Clarify command-layer responsibilities.
-4. Migrate simple stateless commands out of the server switch.
-5. Delay connection-state commands until there is a cleaner session abstraction.
+2. Establish a real automated compatibility safety net.
+3. Add tests for the command registry path.
+4. Clarify command-layer responsibilities.
+5. Migrate simple stateless commands out of the server switch.
+6. Delay connection-state commands until there is a cleaner session abstraction.
+
+## Testing direction
+
+Historically, features were validated manually by connecting with a Redis client and checking behavior interactively.
+
+That should now become an explicit automated testing strategy:
+
+- keep unit tests for store and persistence behavior
+- add integration tests that start GoodiesDB and use Redis client libraries to exercise features end to end
+
+This is the right fit for the project because the main success criterion is not strict internal design purity. It is whether Redis clients can use GoodiesDB without surprises.
+
+Priority test targets:
+
+- `SET` and `GET`
+- expiration behavior
+- list operations
+- `SELECT`
+- nil responses
+- error replies
+- command argument validation
 
 ## Resume checklist
 
@@ -119,5 +141,6 @@ When restarting implementation work:
 1. Read `AGENTS.md`
 2. Read `docs/refactoring/COMMAND_REGISTRY_REFACTOR.md`
 3. Fix the lock recursion first
-4. Re-run `GOCACHE=/tmp/gocache go test ./...`
-5. Continue migration in small command batches
+4. Add the first client-library integration tests
+5. Re-run `GOCACHE=/tmp/gocache go test ./...`
+6. Continue migration in small command batches

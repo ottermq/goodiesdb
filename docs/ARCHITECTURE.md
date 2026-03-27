@@ -55,6 +55,23 @@ Today it is only partially adopted.
 - Persistence is optional and configured through server config.
 - The codebase currently uses a hybrid command-dispatch model during the registry refactor.
 
+## Testing philosophy
+
+The preferred testing model for GoodiesDB is layered:
+
+- unit tests validate internal store and persistence behavior
+- integration tests validate end-to-end compatibility through Redis client libraries
+
+This is intentional. GoodiesDB's primary promise is client compatibility for practical pet-project use, so tests should exercise the system the way real consumers use it.
+
+That means a feature is best validated by:
+
+1. starting the server
+2. connecting with a Redis client library
+3. asserting behavior through the network protocol
+
+This should gradually replace the earlier manual-only workflow of opening a Redis client and trying commands by hand.
+
 ## Architectural debt worth watching
 
 - command behavior is split between registry-based commands and the server switch
