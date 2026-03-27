@@ -220,6 +220,37 @@ func TestDelRemovesExistingKey(t *testing.T) {
 	}
 }
 
+func TestExistsCountsMatchingKeys(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	if err := client.Set(ctx, "exists:one", "1", 0).Err(); err != nil {
+		t.Fatalf("SET exists:one failed: %v", err)
+	}
+	if err := client.Set(ctx, "exists:two", "2", 0).Err(); err != nil {
+		t.Fatalf("SET exists:two failed: %v", err)
+	}
+
+	count, err := client.Exists(ctx, "exists:one").Result()
+	if err != nil {
+		t.Fatalf("EXISTS single key failed: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected EXISTS single key result 1, got %d", count)
+	}
+
+	count, err = client.Exists(ctx, "exists:one", "exists:two", "exists:missing").Result()
+	if err != nil {
+		t.Fatalf("EXISTS multiple keys failed: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("expected EXISTS multiple keys result 2, got %d", count)
+	}
+}
+
 func TestListEdgeCommands(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
