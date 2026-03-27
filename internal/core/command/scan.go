@@ -2,7 +2,6 @@ package command
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/andrelcunha/goodiesdb/internal/protocol"
@@ -23,16 +22,13 @@ func (c *ScanCommand) RequiresAuth() bool {
 }
 
 func (c *ScanCommand) Validate(args []string) error {
-	if len(args) < 1 {
-		return ErrWrongNumberOfArguments
-	}
-	return nil
+	return requireMinArgs(args, 1)
 }
 
 func (c *ScanCommand) Execute(ctx *Context, args []string) (protocol.RESPValue, error) {
-	cursor, err := strconv.Atoi(args[0])
+	cursor, err := parseIntArg(args[0], "invalid cursor")
 	if err != nil {
-		return nil, fmt.Errorf("invalid cursor")
+		return nil, err
 	}
 
 	pattern := "*"
@@ -50,8 +46,11 @@ func (c *ScanCommand) Execute(ctx *Context, args []string) (protocol.RESPValue, 
 			if i+1 >= len(args) {
 				return nil, fmt.Errorf("syntax error")
 			}
-			c, err := strconv.Atoi(args[i+1])
+			c, err := parseIntArg(args[i+1], "value is not an integer or out of range")
 			if err != nil || c <= 0 {
+				if err != nil {
+					return nil, err
+				}
 				return nil, fmt.Errorf("value is not an integer or out of range")
 			}
 			count = c
@@ -67,7 +66,7 @@ func (c *ScanCommand) Execute(ctx *Context, args []string) (protocol.RESPValue, 
 	}
 
 	return protocol.Array{
-		protocol.BulkString([]byte(strconv.Itoa(newCursor))),
+		protocol.BulkString([]byte(fmt.Sprintf("%d", newCursor))),
 		stringSliceToRESPArray(keys),
 	}, nil
 }

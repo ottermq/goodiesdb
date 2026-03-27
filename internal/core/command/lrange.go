@@ -2,7 +2,6 @@ package command
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/andrelcunha/goodiesdb/internal/protocol"
 )
@@ -22,20 +21,17 @@ func (c *LRangeCommand) RequiresAuth() bool {
 }
 
 func (c *LRangeCommand) Validate(args []string) error {
-	if len(args) != 3 {
-		return ErrWrongNumberOfArguments
-	}
-	return nil
+	return requireExactArgs(args, 3)
 }
 
 func (c *LRangeCommand) Execute(ctx *Context, args []string) (protocol.RESPValue, error) {
-	start, err := strconv.Atoi(args[1])
+	start, err := parseIntArg(args[1], "value is not an integer or out of range")
 	if err != nil {
-		return nil, fmt.Errorf("value is not an integer or out of range")
+		return nil, err
 	}
-	stop, err := strconv.Atoi(args[2])
+	stop, err := parseIntArg(args[2], "value is not an integer or out of range")
 	if err != nil {
-		return nil, fmt.Errorf("value is not an integer or out of range")
+		return nil, err
 	}
 
 	values, err := ctx.Store.LRange(ctx.DBIndex, args[0], start, stop)

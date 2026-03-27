@@ -1,11 +1,6 @@
 package command
 
-import (
-	"fmt"
-	"strconv"
-
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
-)
+import "github.com/andrelcunha/goodiesdb/internal/protocol"
 
 type LTrimCommand struct{}
 
@@ -22,20 +17,17 @@ func (c *LTrimCommand) RequiresAuth() bool {
 }
 
 func (c *LTrimCommand) Validate(args []string) error {
-	if len(args) != 3 {
-		return ErrWrongNumberOfArguments
-	}
-	return nil
+	return requireExactArgs(args, 3)
 }
 
 func (c *LTrimCommand) Execute(ctx *Context, args []string) (protocol.RESPValue, error) {
-	start, err := strconv.Atoi(args[1])
+	start, err := parseIntArg(args[1], "value is not an integer or out of range")
 	if err != nil {
-		return nil, fmt.Errorf("value is not an integer or out of range")
+		return nil, err
 	}
-	stop, err := strconv.Atoi(args[2])
+	stop, err := parseIntArg(args[2], "value is not an integer or out of range")
 	if err != nil {
-		return nil, fmt.Errorf("value is not an integer or out of range")
+		return nil, err
 	}
 
 	if err := ctx.Store.LTrim(ctx.DBIndex, args[0], start, stop); err != nil {

@@ -2,7 +2,6 @@ package command
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/andrelcunha/goodiesdb/internal/protocol"
 )
@@ -22,16 +21,13 @@ func (c *SelectCommand) RequiresAuth() bool {
 }
 
 func (c *SelectCommand) Validate(args []string) error {
-	if len(args) != 1 {
-		return ErrWrongNumberOfArguments
-	}
-	return nil
+	return requireExactArgs(args, 1)
 }
 
 func (c *SelectCommand) Execute(ctx *Context, args []string) (protocol.RESPValue, error) {
-	dbIndex, err := strconv.Atoi(args[0])
+	dbIndex, err := parseIntArg(args[0], "invalid DB index")
 	if err != nil {
-		return nil, fmt.Errorf("invalid DB index")
+		return nil, err
 	}
 	if ctx.SelectDB == nil {
 		return nil, fmt.Errorf("select DB not available")

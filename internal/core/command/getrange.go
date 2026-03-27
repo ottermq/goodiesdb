@@ -1,11 +1,6 @@
 package command
 
-import (
-	"fmt"
-	"strconv"
-
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
-)
+import "github.com/andrelcunha/goodiesdb/internal/protocol"
 
 type GetRangeCommand struct{}
 
@@ -22,20 +17,17 @@ func (c *GetRangeCommand) RequiresAuth() bool {
 }
 
 func (c *GetRangeCommand) Validate(args []string) error {
-	if len(args) != 3 {
-		return ErrWrongNumberOfArguments
-	}
-	return nil
+	return requireExactArgs(args, 3)
 }
 
 func (c *GetRangeCommand) Execute(ctx *Context, args []string) (protocol.RESPValue, error) {
-	start, err := strconv.Atoi(args[1])
+	start, err := parseIntArg(args[1], "value is not an integer or out of range")
 	if err != nil {
-		return nil, fmt.Errorf("value is not an integer or out of range")
+		return nil, err
 	}
-	end, err := strconv.Atoi(args[2])
+	end, err := parseIntArg(args[2], "value is not an integer or out of range")
 	if err != nil {
-		return nil, fmt.Errorf("value is not an integer or out of range")
+		return nil, err
 	}
 
 	value, err := ctx.Store.GetRange(ctx.DBIndex, args[0], start, end)
