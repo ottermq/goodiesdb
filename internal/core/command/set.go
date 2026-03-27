@@ -12,15 +12,6 @@ func (c *SetCommand) Name() string {
 	return "SET"
 }
 
-func (c *SetCommand) MinArgs() int {
-	return 2
-}
-
-func (c *SetCommand) MaxArgs() int {
-	// key, value, modifiers (array)
-	return 3
-}
-
 func (c *SetCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

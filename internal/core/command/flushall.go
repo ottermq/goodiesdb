@@ -12,14 +12,6 @@ func (c *FlushAllCommand) Name() string {
 	return "FLUSHALL"
 }
 
-func (c *FlushAllCommand) MinArgs() int {
-	return 0
-}
-
-func (c *FlushAllCommand) MaxArgs() int {
-	return -1
-}
-
 func (c *FlushAllCommand) RequiresAuth() bool {
 	return false
 }

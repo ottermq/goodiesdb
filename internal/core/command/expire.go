@@ -18,14 +18,6 @@ func (c *ExpireCommand) Name() string {
 	return "EXPIRE"
 }
 
-func (c *ExpireCommand) MinArgs() int {
-	return 2
-}
-
-func (c *ExpireCommand) MaxArgs() int {
-	return 2
-}
-
 func (c *ExpireCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

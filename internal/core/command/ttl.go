@@ -12,14 +12,6 @@ func (c *TTLCommand) Name() string {
 	return "TTL"
 }
 
-func (c *TTLCommand) MinArgs() int {
-	return 1
-}
-
-func (c *TTLCommand) MaxArgs() int {
-	return 1
-}
-
 func (c *TTLCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

@@ -12,14 +12,6 @@ func (c *DecrCommand) Name() string {
 	return "DECR"
 }
 
-func (c *DecrCommand) MinArgs() int {
-	return 1
-}
-
-func (c *DecrCommand) MaxArgs() int {
-	return 1
-}
-
 func (c *DecrCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

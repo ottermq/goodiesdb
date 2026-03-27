@@ -12,14 +12,6 @@ func (c *InfoCommand) Name() string {
 	return "INFO"
 }
 
-func (c *InfoCommand) MinArgs() int {
-	return 0
-}
-
-func (c *InfoCommand) MaxArgs() int {
-	return -1
-}
-
 func (c *InfoCommand) RequiresAuth() bool {
 	return false
 }

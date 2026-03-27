@@ -12,14 +12,6 @@ func (c *DelCommand) Name() string {
 	return "DEL"
 }
 
-func (c *DelCommand) MinArgs() int {
-	return 1
-}
-
-func (c *DelCommand) MaxArgs() int {
-	return 1
-}
-
 func (c *DelCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

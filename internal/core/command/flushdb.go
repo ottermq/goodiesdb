@@ -12,14 +12,6 @@ func (c *FlushDBCommand) Name() string {
 	return "FLUSHDB"
 }
 
-func (c *FlushDBCommand) MinArgs() int {
-	return 0
-}
-
-func (c *FlushDBCommand) MaxArgs() int {
-	return -1
-}
-
 func (c *FlushDBCommand) RequiresAuth() bool {
 	return false
 }

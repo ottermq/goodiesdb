@@ -12,14 +12,6 @@ func (c *SetNXCommand) Name() string {
 	return "SETNX"
 }
 
-func (c *SetNXCommand) MinArgs() int {
-	return 2
-}
-
-func (c *SetNXCommand) MaxArgs() int {
-	return 2
-}
-
 func (c *SetNXCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

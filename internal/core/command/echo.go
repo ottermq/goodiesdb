@@ -16,14 +16,6 @@ func (c *EchoCommand) Name() string {
 	return "ECHO"
 }
 
-func (c *EchoCommand) MinArgs() int {
-	return 1
-}
-
-func (c *EchoCommand) MaxArgs() int {
-	return -1
-}
-
 func (c *EchoCommand) RequiresAuth() bool {
 	return false
 }

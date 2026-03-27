@@ -18,14 +18,6 @@ func (c *ScanCommand) Name() string {
 	return "SCAN"
 }
 
-func (c *ScanCommand) MinArgs() int {
-	return 1
-}
-
-func (c *ScanCommand) MaxArgs() int {
-	return -1
-}
-
 func (c *ScanCommand) RequiresAuth() bool {
 	return false
 }

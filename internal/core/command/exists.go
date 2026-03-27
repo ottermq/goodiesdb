@@ -12,14 +12,6 @@ func (c *ExistsCommand) Name() string {
 	return "EXISTS"
 }
 
-func (c *ExistsCommand) MinArgs() int {
-	return 1
-}
-
-func (c *ExistsCommand) MaxArgs() int {
-	return -1
-}
-
 func (c *ExistsCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

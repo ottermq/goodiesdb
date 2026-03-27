@@ -12,14 +12,6 @@ func (c *StrLenCommand) Name() string {
 	return "STRLEN"
 }
 
-func (c *StrLenCommand) MinArgs() int {
-	return 1
-}
-
-func (c *StrLenCommand) MaxArgs() int {
-	return 1
-}
-
 func (c *StrLenCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

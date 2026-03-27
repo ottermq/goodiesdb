@@ -44,21 +44,17 @@ Current interface:
 - `Execute()`
 - `Validate()`
 - `RequiresAuth()`
-- `MinArgs()`
-- `MaxArgs()`
 
 Observations:
 
-- `MinArgs()` and `MaxArgs()` are currently unused.
-- `SET` supports variable options, so `MaxArgs()` is already a poor fit as written.
-- `Validate()` is doing the real work today.
+- `Validate()` is the single source of truth for command input validation.
+- This avoids splitting arity rules and syntax rules across two mechanisms.
+- It is a better fit for Redis-style commands with flags, optional counts, and sub-syntax.
 
 Recommendation:
 
-- either remove `MinArgs()` and `MaxArgs()`
-- or make the server use them consistently for generic validation
-
-Do not keep redundant abstractions unless they reduce code meaningfully.
+- keep `Validate()` as the single validation path
+- use small shared helpers when repeated validation logic becomes noisy
 
 ### 3. Protocol concerns leaked into the store
 
@@ -87,7 +83,7 @@ The main remaining work is cleanup and hardening, not command extraction.
 
 Recommended follow-ups:
 
-- simplify the `Command` interface if `MinArgs()` and `MaxArgs()` remain unused
+- keep the `Command` interface small and avoid reintroducing duplicate validation metadata
 - decide whether `Store.Protocol` should remain in the store layer
 - tighten session-aware behavior where raw `net.Conn` still feels awkward
 - add more compatibility tests around errors, edge cases, and unsupported commands

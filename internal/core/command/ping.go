@@ -12,14 +12,6 @@ func (c *PingCommand) Name() string {
 	return "PING"
 }
 
-func (c *PingCommand) MinArgs() int {
-	return 0
-}
-
-func (c *PingCommand) MaxArgs() int {
-	return -1
-}
-
 func (c *PingCommand) RequiresAuth() bool {
 	return false
 }

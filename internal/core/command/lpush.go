@@ -12,14 +12,6 @@ func (c *LPushCommand) Name() string {
 	return "LPUSH"
 }
 
-func (c *LPushCommand) MinArgs() int {
-	return 2
-}
-
-func (c *LPushCommand) MaxArgs() int {
-	return -1
-}
-
 func (c *LPushCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

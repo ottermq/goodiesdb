@@ -15,14 +15,6 @@ func (c *GetCommand) Name() string {
 	return "GET"
 }
 
-func (c *GetCommand) MinArgs() int {
-	return 1
-}
-
-func (c *GetCommand) MaxArgs() int {
-	return 1
-}
-
 func (c *GetCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

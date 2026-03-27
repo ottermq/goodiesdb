@@ -17,14 +17,6 @@ func (c *LTrimCommand) Name() string {
 	return "LTRIM"
 }
 
-func (c *LTrimCommand) MinArgs() int {
-	return 3
-}
-
-func (c *LTrimCommand) MaxArgs() int {
-	return 3
-}
-
 func (c *LTrimCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

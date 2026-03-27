@@ -17,14 +17,6 @@ func (c *LPopCommand) Name() string {
 	return "LPOP"
 }
 
-func (c *LPopCommand) MinArgs() int {
-	return 1
-}
-
-func (c *LPopCommand) MaxArgs() int {
-	return 2
-}
-
 func (c *LPopCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

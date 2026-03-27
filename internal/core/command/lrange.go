@@ -17,14 +17,6 @@ func (c *LRangeCommand) Name() string {
 	return "LRANGE"
 }
 
-func (c *LRangeCommand) MinArgs() int {
-	return 3
-}
-
-func (c *LRangeCommand) MaxArgs() int {
-	return 3
-}
-
 func (c *LRangeCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

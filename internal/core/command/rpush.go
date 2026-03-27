@@ -12,14 +12,6 @@ func (c *RPushCommand) Name() string {
 	return "RPUSH"
 }
 
-func (c *RPushCommand) MinArgs() int {
-	return 2
-}
-
-func (c *RPushCommand) MaxArgs() int {
-	return -1
-}
-
 func (c *RPushCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

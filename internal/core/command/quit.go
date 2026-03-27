@@ -12,14 +12,6 @@ func (c *QuitCommand) Name() string {
 	return "QUIT"
 }
 
-func (c *QuitCommand) MinArgs() int {
-	return 0
-}
-
-func (c *QuitCommand) MaxArgs() int {
-	return -1
-}
-
 func (c *QuitCommand) RequiresAuth() bool {
 	return false
 }

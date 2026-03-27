@@ -12,14 +12,6 @@ func (c *RenameCommand) Name() string {
 	return "RENAME"
 }
 
-func (c *RenameCommand) MinArgs() int {
-	return 2
-}
-
-func (c *RenameCommand) MaxArgs() int {
-	return 2
-}
-
 func (c *RenameCommand) RequiresAuth() bool {
 	return false
 }

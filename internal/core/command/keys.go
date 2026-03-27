@@ -12,14 +12,6 @@ func (c *KeysCommand) Name() string {
 	return "KEYS"
 }
 
-func (c *KeysCommand) MinArgs() int {
-	return 1
-}
-
-func (c *KeysCommand) MaxArgs() int {
-	return 1
-}
-
 func (c *KeysCommand) RequiresAuth() bool {
 	return false
 }

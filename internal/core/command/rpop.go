@@ -17,14 +17,6 @@ func (c *RPopCommand) Name() string {
 	return "RPOP"
 }
 
-func (c *RPopCommand) MinArgs() int {
-	return 1
-}
-
-func (c *RPopCommand) MaxArgs() int {
-	return 2
-}
-
 func (c *RPopCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

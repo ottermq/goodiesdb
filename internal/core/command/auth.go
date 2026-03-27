@@ -12,14 +12,6 @@ func (c *AuthCommand) Name() string {
 	return "AUTH"
 }
 
-func (c *AuthCommand) MinArgs() int {
-	return 1
-}
-
-func (c *AuthCommand) MaxArgs() int {
-	return 1
-}
-
 func (c *AuthCommand) RequiresAuth() bool {
 	return false
 }

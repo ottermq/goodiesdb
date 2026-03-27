@@ -12,14 +12,6 @@ func (c *TypeCommand) Name() string {
 	return "TYPE"
 }
 
-func (c *TypeCommand) MinArgs() int {
-	return 1
-}
-
-func (c *TypeCommand) MaxArgs() int {
-	return 1
-}
-
 func (c *TypeCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

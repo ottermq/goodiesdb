@@ -14,8 +14,6 @@ type Command interface {
 	Execute(ctx *Context, args []string) (protocol.RESPValue, error)
 	Validate(args []string) error
 	RequiresAuth() bool
-	MinArgs() int
-	MaxArgs() int
 }
 
 type Context struct {

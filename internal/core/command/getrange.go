@@ -17,14 +17,6 @@ func (c *GetRangeCommand) Name() string {
 	return "GETRANGE"
 }
 
-func (c *GetRangeCommand) MinArgs() int {
-	return 3
-}
-
-func (c *GetRangeCommand) MaxArgs() int {
-	return 3
-}
-
 func (c *GetRangeCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }

@@ -17,14 +17,6 @@ func (c *SelectCommand) Name() string {
 	return "SELECT"
 }
 
-func (c *SelectCommand) MinArgs() int {
-	return 1
-}
-
-func (c *SelectCommand) MaxArgs() int {
-	return 1
-}
-
 func (c *SelectCommand) RequiresAuth() bool {
 	return false
 }

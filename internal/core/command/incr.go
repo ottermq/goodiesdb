@@ -12,14 +12,6 @@ func (c *IncrCommand) Name() string {
 	return "INCR"
 }
 
-func (c *IncrCommand) MinArgs() int {
-	return 1
-}
-
-func (c *IncrCommand) MaxArgs() int {
-	return 1
-}
-
 func (c *IncrCommand) RequiresAuth() bool {
 	return false // TODO: refactor authentication
 }
