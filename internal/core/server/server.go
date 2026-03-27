@@ -240,28 +240,6 @@ func (s *Server) executeCommand(conn net.Conn, request protocol.RESPValue) (prot
 		}
 		return protocol.SimpleString("OK"), nil // FIX: Use protocol.SimpleString
 
-	case "LPUSH":
-		if len(parts) < 3 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'LPUSH' command"), nil
-		}
-		slice := make([]any, len(parts)-2)
-		for i := 2; i < len(parts); i++ {
-			slice[i-2] = parts[i]
-		}
-		length := s.store.LPush(dbIndex, parts[1], slice...)
-		return protocol.Integer(int64(length)), nil // FIX: Convert to protocol.Integer
-
-	case "RPUSH":
-		if len(parts) < 3 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'RPUSH' command"), nil
-		}
-		slice := make([]any, len(parts)-2)
-		for i := 2; i < len(parts); i++ {
-			slice[i-2] = parts[i]
-		}
-		length := s.store.RPush(dbIndex, parts[1], slice...)
-		return protocol.Integer(int64(length)), nil // FIX: Convert to protocol.Integer
-
 	case "LPOP":
 		if len(parts) != 2 && len(parts) != 3 {
 			return protocol.ErrorString("ERR wrong number of arguments for 'LPOP' command"), nil

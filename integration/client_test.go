@@ -173,6 +173,31 @@ func TestListCommands(t *testing.T) {
 	}
 }
 
+func TestRPushAppendsValuesInOrder(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	length, err := client.RPush(ctx, "queue", "a", "b", "c").Result()
+	if err != nil {
+		t.Fatalf("RPUSH failed: %v", err)
+	}
+	if length != 3 {
+		t.Fatalf("expected RPUSH length 3, got %d", length)
+	}
+
+	values, err := client.LRange(ctx, "queue", 0, -1).Result()
+	if err != nil {
+		t.Fatalf("LRANGE after RPUSH failed: %v", err)
+	}
+	expected := []string{"a", "b", "c"}
+	if strings.Join(values, ",") != strings.Join(expected, ",") {
+		t.Fatalf("expected RPUSH order %v, got %v", expected, values)
+	}
+}
+
 func TestCommandErrorsVisibleThroughRedisClient(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
