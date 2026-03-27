@@ -66,6 +66,18 @@ make run
 
 You can then interact with the server using PuTTY on raw TCP port 6379.
 
+## Documentation
+
+For project context and contributor guidance, start with:
+
+- `AGENTS.md`
+- `CONTRIBUTING.md`
+- `docs/ARCHITECTURE.md`
+- `docs/PROJECT_STATUS.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `docs/refactoring/COMMAND_REGISTRY_REFACTOR.md`
+
 ## License
 
 This project is licensed under the MIT License.

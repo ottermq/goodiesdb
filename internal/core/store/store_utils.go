@@ -1,6 +1,11 @@
 package store
 
-// delKey deletes a key from the store and its expiration
+// Delele a key from the store
+func (s *Store) Delete(dbIndex int, key string) {
+	s.delKey(dbIndex, key)
+}
+
+// delKey deletes a key from the store and its expiration (protected)
 func (s *Store) delKey(dbIndex int, key string) {
 	delete(s.data[dbIndex], key)
 }

@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"maps"
 	"regexp"
 	"strconv"
 	"strings"
@@ -45,14 +46,10 @@ func (s *Store) GetSnapshot() []map[string]*Value {
 
 	// Create deep copies to avoid data races
 	dataCopy := make([]map[string]*Value, len(s.data))
-
 	for i := range s.data {
 		dataCopy[i] = make(map[string]*Value)
 
-		for k, v := range s.data[i] {
-			dataCopy[i][k] = v
-		}
-
+		maps.Copy(dataCopy[i], s.data[i])
 	}
 
 	return dataCopy

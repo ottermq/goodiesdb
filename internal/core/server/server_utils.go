@@ -16,6 +16,16 @@ func (s *Server) isAuthenticates(conn net.Conn) bool {
 	return s.authenticatedConnections[conn]
 }
 
+func (s *Server) Authenticate(conn net.Conn, password string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if password != s.config.Password {
+		return false
+	}
+	s.authenticatedConnections[conn] = true
+	return true
+}
+
 func (s *Server) getCurrentDb(conn net.Conn) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -46,6 +56,48 @@ func (s *Server) SelectDb(conn net.Conn, dbIndex int) error {
 	}
 	s.connectionDbs[conn] = dbIndex
 	return nil
+}
+
+func (s *Server) Addr() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.listener == nil {
+		return ""
+	}
+
+	return s.listener.Addr().String()
+}
+
+func (s *Server) WaitForReady(timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		addr := s.Addr()
+		if addr != "" {
+			conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+			if err == nil {
+				_ = conn.Close()
+				return nil
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return fmt.Errorf("server did not become ready within %s", timeout)
+}
+
+func (s *Server) stopAcceptLoop() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	select {
+	case <-s.shutdownChan:
+	default:
+		close(s.shutdownChan)
+	}
+
+	if s.listener != nil {
+		_ = s.listener.Close()
+	}
 }
 
 func (s *Server) startRDB() {
