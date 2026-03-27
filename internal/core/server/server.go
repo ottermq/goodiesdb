@@ -233,16 +233,6 @@ func (s *Server) executeCommand(conn net.Conn, request protocol.RESPValue) (prot
 		result := s.store.SetNX(dbIndex, parts[1], parts[2])
 		return protocol.Integer(result), nil
 
-	case "TTL":
-		if len(parts) != 2 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'TTL' command"), nil
-		}
-		ttl, err := s.store.TTL(dbIndex, parts[1])
-		if err != nil {
-			return protocol.ErrorString("ERR " + err.Error()), nil
-		}
-		return protocol.Integer(int64(ttl)), nil // FIX: Convert to protocol.Integer
-
 	case "SELECT":
 		if len(parts) != 2 {
 			return protocol.ErrorString("ERR wrong number of arguments for 'SELECT' command"), nil

@@ -22,7 +22,7 @@ func NewRegistry() *Registry {
 	r.Register(NewExpireCommand())
 	r.Register(NewIncrCommand())
 	r.Register(NewDecrCommand())
-
+	r.Register(NewTTLCommand())
 	return r
 }
 

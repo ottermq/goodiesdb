@@ -279,6 +279,48 @@ func TestExpireReportsExistingAndMissingKeys(t *testing.T) {
 	}
 }
 
+func TestTTLReportsExpiringPersistentAndMissingKeys(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	if err := client.Set(ctx, "ttl:expiring", "value", 0).Err(); err != nil {
+		t.Fatalf("SET ttl:expiring failed: %v", err)
+	}
+	if err := client.Set(ctx, "ttl:persistent", "value", 0).Err(); err != nil {
+		t.Fatalf("SET ttl:persistent failed: %v", err)
+	}
+	if err := client.Expire(ctx, "ttl:expiring", 5*time.Second).Err(); err != nil {
+		t.Fatalf("EXPIRE ttl:expiring failed: %v", err)
+	}
+
+	ttl, err := client.TTL(ctx, "ttl:expiring").Result()
+	if err != nil {
+		t.Fatalf("TTL expiring key failed: %v", err)
+	}
+	if ttl <= 0 {
+		t.Fatalf("expected TTL for expiring key to be positive, got %v", ttl)
+	}
+
+	ttl, err = client.TTL(ctx, "ttl:persistent").Result()
+	if err != nil {
+		t.Fatalf("TTL persistent key failed: %v", err)
+	}
+	if ttl != -1 {
+		t.Fatalf("expected TTL for persistent key to be -1, got %v", ttl)
+	}
+
+	ttl, err = client.TTL(ctx, "ttl:missing").Result()
+	if err != nil {
+		t.Fatalf("TTL missing key failed: %v", err)
+	}
+	if ttl != -2 {
+		t.Fatalf("expected TTL for missing key to be -2, got %v", ttl)
+	}
+}
+
 func TestListEdgeCommands(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
