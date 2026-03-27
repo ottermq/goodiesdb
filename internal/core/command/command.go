@@ -21,6 +21,7 @@ type Context struct {
 	DBIndex   int
 	Conn      net.Conn
 	Timestamp time.Time
+	Nil       func() protocol.RESPValue
 	Auth      func(password string) bool
 	SelectDB  func(dbIndex int) error
 	Info      func() protocol.BulkString

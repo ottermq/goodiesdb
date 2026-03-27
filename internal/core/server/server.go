@@ -55,7 +55,6 @@ func NewServer(config *Config) *Server {
 		Protocol:                 protocol,
 		commandRegistry:          command.NewRegistry(),
 	}
-	s.SetProtocol(protocol)
 	return server
 }
 
@@ -199,6 +198,9 @@ func (s *Server) invokeCommand(cmd command.Command, args []string, conn net.Conn
 		DBIndex:   dbIndex,
 		Conn:      conn,
 		Timestamp: time.Now(),
+		Nil: func() protocol.RESPValue {
+			return s.Protocol.EncodeNil()
+		},
 		Auth: func(password string) bool {
 			return s.Authenticate(conn, password)
 		},

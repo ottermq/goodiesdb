@@ -9,17 +9,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
 	"github.com/andrelcunha/goodiesdb/internal/utils/slice"
 )
 
 var ErrNoSuchKey = fmt.Errorf("no such key")
 
 type Store struct {
-	data     []map[string]*Value
-	mu       sync.RWMutex
-	aofChan  chan string
-	Protocol protocol.Protocol
+	data    []map[string]*Value
+	mu      sync.RWMutex
+	aofChan chan string
 }
 
 // NewStore creates a new store
@@ -32,10 +30,6 @@ func NewStore(aofChan chan string) *Store {
 		data:    data,
 		aofChan: aofChan,
 	}
-}
-
-func (s *Store) SetProtocol(p protocol.Protocol) {
-	s.Protocol = p
 }
 
 func (s *Store) Count() int {

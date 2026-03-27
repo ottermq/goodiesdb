@@ -29,13 +29,13 @@ func (c *GetCommand) Validate(args []string) error {
 func (c *GetCommand) Execute(ctx *Context, args []string) (protocol.RESPValue, error) {
 	value, ok := ctx.Store.Get(ctx.DBIndex, args[0])
 	if !ok {
-		return ctx.Store.Protocol.EncodeNil(), nil
+		return ctx.Nil(), nil
 	}
 
 	if value.IsExpired() {
 		// lazy delete
 		ctx.Store.Delete(ctx.DBIndex, args[0])
-		return ctx.Store.Protocol.EncodeNil(), nil
+		return ctx.Nil(), nil
 	}
 
 	str, err := value.ToString()

@@ -32,7 +32,7 @@ func (c *SetCommand) Execute(ctx *Context, args []string) (protocol.RESPValue, e
 		return nil, err
 	}
 	if !ok {
-		return ctx.Store.Protocol.EncodeNil(), nil
+		return ctx.Nil(), nil
 	}
 	return protocol.SimpleString("OK"), nil
 }

@@ -35,7 +35,7 @@ func (c *RPopCommand) Execute(ctx *Context, args []string) (protocol.RESPValue, 
 		return nil, err
 	}
 	if value == nil {
-		return ctx.Store.Protocol.EncodeNil(), nil
+		return ctx.Nil(), nil
 	}
 
 	return valueToRESP(value), nil
