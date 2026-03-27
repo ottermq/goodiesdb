@@ -251,6 +251,34 @@ func TestExistsCountsMatchingKeys(t *testing.T) {
 	}
 }
 
+func TestExpireReportsExistingAndMissingKeys(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	if err := client.Set(ctx, "expiring-key", "value", 0).Err(); err != nil {
+		t.Fatalf("SET expiring-key failed: %v", err)
+	}
+
+	ok, err := client.Expire(ctx, "expiring-key", time.Second).Result()
+	if err != nil {
+		t.Fatalf("EXPIRE existing key failed: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected EXPIRE to return true for an existing key")
+	}
+
+	ok, err = client.Expire(ctx, "missing-key", time.Second).Result()
+	if err != nil {
+		t.Fatalf("EXPIRE missing key failed: %v", err)
+	}
+	if ok {
+		t.Fatalf("expected EXPIRE to return false for a missing key")
+	}
+}
+
 func TestListEdgeCommands(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
