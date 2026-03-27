@@ -213,34 +213,6 @@ func (s *Server) invokeCommand(cmd command.Command, args []string, conn net.Conn
 	return cmd.Execute(ctx, args)
 }
 
-// Helper functions
-func anyToRESP(value interface{}) protocol.RESPValue {
-	switch v := value.(type) {
-	case string:
-		return protocol.BulkString([]byte(v))
-	case []any:
-		return anySliceToRESPArray(v)
-	default:
-		return protocol.BulkString([]byte(fmt.Sprintf("%v", v)))
-	}
-}
-
-func anySliceToRESPArray(items []any) protocol.Array {
-	arr := make(protocol.Array, len(items))
-	for i, item := range items {
-		arr[i] = anyToRESP(item)
-	}
-	return arr
-}
-
-func stringSliceToRESPArray(strs []string) protocol.Array {
-	arr := make(protocol.Array, len(strs))
-	for i, s := range strs {
-		arr[i] = protocol.BulkString([]byte(s))
-	}
-	return arr
-}
-
 func convertArrayToStrings(rawParts protocol.Array) []string {
 	parts := make([]string, len(rawParts))
 	for i, part := range rawParts {
@@ -257,78 +229,4 @@ func convertArrayToStrings(rawParts protocol.Array) []string {
 		}
 	}
 	return parts
-}
-
-func convertValueTypeToRESPType(val interface{}) (protocol.RESPValue, error) {
-	// If val is already a store.Value, extract it
-	value, ok := val.(store.Value)
-	if !ok {
-		// If it's raw data, try to infer
-		switch v := val.(type) {
-		case string:
-			return protocol.BulkString([]byte(v)), nil
-		case []any:
-			return anySliceToRESPArray(v), nil
-		default:
-			return protocol.BulkString([]byte(fmt.Sprintf("%v", v))), nil
-		}
-	}
-
-	// Handle store.Value types
-	switch value.Type {
-	case store.TypeString:
-		str, ok := value.Data.(string)
-		if !ok {
-			return protocol.ErrorString("ERR invalid string value"), fmt.Errorf("invalid string value")
-		}
-		return protocol.BulkString([]byte(str)), nil
-
-	case store.TypeList:
-		list, ok := value.Data.([]any)
-		if !ok {
-			return protocol.ErrorString("ERR invalid list value"), fmt.Errorf("invalid list value")
-		}
-		return anySliceToRESPArray(list), nil
-
-	case store.TypeHash:
-		hash, ok := value.Data.(map[string]any)
-		if !ok {
-			return protocol.ErrorString("ERR invalid hash value"), fmt.Errorf("invalid hash value")
-		}
-		// Convert hash to array of key-value pairs
-		arr := make(protocol.Array, 0, len(hash)*2)
-		for k, v := range hash {
-			arr = append(arr, protocol.BulkString([]byte(k)))
-			arr = append(arr, protocol.BulkString([]byte(fmt.Sprintf("%v", v))))
-		}
-		return arr, nil
-
-	case store.TypeSet:
-		set, ok := value.Data.(map[string]struct{})
-		if !ok {
-			return protocol.ErrorString("ERR invalid set value"), fmt.Errorf("invalid set value")
-		}
-		// Convert set to array
-		arr := make(protocol.Array, 0, len(set))
-		for member := range set {
-			arr = append(arr, protocol.BulkString([]byte(member)))
-		}
-		return arr, nil
-
-	case store.TypeZSet:
-		zset, ok := value.Data.(map[string]float64)
-		if !ok {
-			return protocol.ErrorString("ERR invalid zset value"), fmt.Errorf("invalid zset value")
-		}
-		// Convert zset to array of member-score pairs
-		arr := make(protocol.Array, 0, len(zset)*2)
-		for member, score := range zset {
-			arr = append(arr, protocol.BulkString([]byte(member)))
-			arr = append(arr, protocol.BulkString([]byte(fmt.Sprintf("%f", score))))
-		}
-		return arr, nil
-
-	default:
-		return protocol.ErrorString("ERR unsupported type"), fmt.Errorf("unsupported type: %v", value.Type)
-	}
 }

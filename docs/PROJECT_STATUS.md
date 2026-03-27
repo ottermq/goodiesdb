@@ -40,59 +40,23 @@ This strongly suggests the refactor stopped shortly after a vertical slice for `
 
 ## Current command execution model
 
-Today the server uses a hybrid approach:
+The command registry migration is now effectively complete for the currently implemented command set.
 
-- first try `commandRegistry.Get(cmdName)`
-- if a command is registered, execute it through `invokeCommand()`
-- otherwise fall back to the legacy `switch` in `internal/core/server/server.go`
+Today the server uses this flow:
 
-Current registry coverage:
+- parse the RESP array
+- resolve `cmdName`
+- load the command from `commandRegistry`
+- execute it through `invokeCommand()`
+- return `ERR unknown command '<name>'` if no command is registered
 
-- `GET`
-- `SET`
-
-Legacy server switch still handles:
-
-- `AUTH`
-- `DEL`
-- `EXISTS`
-- `SETNX`
-- `EXPIRE`
-- `INCR`
-- `DECR`
-- `TTL`
-- `SELECT`
-- list commands
-- `RENAME`
-- `TYPE`
-- `KEYS`
-- `INFO`
-- `PING`
-- `ECHO`
-- `QUIT`
-- `FLUSHDB`
-- `FLUSHALL`
-- `SCAN`
-- `GETRANGE`
-- `STRLEN`
+The old command switch has been retired.
 
 ## Known issues
 
-### Deadlock in store deletion path
+### Historical note: deadlock in store deletion path
 
-There is a lock recursion bug introduced on this branch.
-
-Problem:
-
-- `Store.Del()` acquires `s.mu.Lock()` and then calls `delKey()`
-- `Store.Rename()` acquires `s.mu.Lock()` and then calls `delKey()`
-- `delKey()` also acquires `s.mu.Lock()`
-
-Result:
-
-- store tests hang
-- AOF tests hang
-- full test runs timeout
+The branch originally contained a lock recursion bug in the delete path. That issue has been fixed.
 
 ### Transitional layering smell
 
@@ -106,12 +70,11 @@ Result:
 
 Recommended order:
 
-1. Fix the deadlock and restore a passing baseline.
-2. Establish a real automated compatibility safety net.
-3. Add tests for the command registry path.
-4. Clarify command-layer responsibilities.
-5. Migrate simple stateless commands out of the server switch.
-6. Delay connection-state commands until there is a cleaner session abstraction.
+1. Clarify the command abstraction and trim leftover transitional API shape.
+2. Decide whether `Store.Protocol` should remain or be removed.
+3. Strengthen integration coverage for edge cases and unsupported command behavior.
+4. Continue improving Redis-client compatibility command by command.
+5. Revisit whether session-aware commands need a richer connection abstraction.
 
 ## Testing direction
 
@@ -140,7 +103,6 @@ When restarting implementation work:
 
 1. Read `AGENTS.md`
 2. Read `docs/refactoring/COMMAND_REGISTRY_REFACTOR.md`
-3. Fix the lock recursion first
-4. Add the first client-library integration tests
-5. Re-run `GOCACHE=/tmp/gocache go test ./...`
-6. Continue migration in small command batches
+3. Re-run `GOCACHE=/tmp/gocache go test ./...`
+4. Review the remaining architectural cleanup items
+5. Extend compatibility tests for edge cases before large behavior changes

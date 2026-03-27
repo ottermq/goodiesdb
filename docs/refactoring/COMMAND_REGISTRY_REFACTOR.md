@@ -22,27 +22,19 @@ The refactor introduces:
 - `Registry` for command lookup
 - `Server.invokeCommand()` as a bridge from the network layer to command objects
 
-Current migrated commands:
+Status now:
 
-- `GET`
-- `SET`
+- the currently implemented command set has been migrated into the registry
+- the legacy switch-based execution path has been removed
+- unknown commands now fail directly after registry lookup
 
-Current migration strategy:
-
-- register a command in the registry
-- let the server try the registry first
-- keep the old switch as fallback
-- migrate commands gradually
-
-This is a sensible strategy and should be preserved.
+The incremental migration strategy worked and is now complete for this phase.
 
 ## Current problems to resolve
 
-### 1. Baseline regression
+### 1. Historical baseline regression
 
-Fix the store deadlock before continuing the refactor.
-
-Without a stable baseline, it is too easy to confuse refactor mistakes with pre-existing behavior.
+The branch originally had a store deadlock in the delete path. That regression has been fixed, and the test suite is green again.
 
 ### 2. Command interface shape is not settled
 
@@ -89,70 +81,17 @@ Recommendation:
 - make that rule explicit
 - apply it consistently
 
-## Recommended migration order
+## What remains after migration
 
-### Phase 1: restore safety
+The main remaining work is cleanup and hardening, not command extraction.
 
-- fix deadlock in delete path
-- re-run tests
-- add a small regression test if needed
+Recommended follow-ups:
 
-### Phase 2: prove the pattern
-
-Migrate a small group of simple commands:
-
-- `DEL`
-- `EXISTS`
-- `EXPIRE`
-- `INCR`
-- `DECR`
-- `TTL`
-
-Why these first:
-
-- simple argument shapes
-- minimal connection-state coupling
-- easy to compare against existing switch behavior
-
-### Phase 3: expand utility commands
-
-Next candidates:
-
-- `GETRANGE`
-- `STRLEN`
-- `TYPE`
-- `KEYS`
-- `PING`
-- `ECHO`
-
-### Phase 4: handle session-aware commands
-
-Later candidates:
-
-- `AUTH`
-- `SELECT`
-- `QUIT`
-
-These likely deserve a richer connection/session abstraction than raw `net.Conn`.
-
-### Phase 5: move complex list commands
-
-After the pattern is stable:
-
-- `LPUSH`
-- `RPUSH`
-- `LPOP`
-- `RPOP`
-- `LRANGE`
-- `LTRIM`
-
-### Phase 6: remove legacy switch paths
-
-Only after enough migration and test coverage:
-
-- shrink the switch
-- keep only bootstrap or truly special commands if needed
-- eventually retire the switch-based command flow
+- simplify the `Command` interface if `MinArgs()` and `MaxArgs()` remain unused
+- decide whether `Store.Protocol` should remain in the store layer
+- tighten session-aware behavior where raw `net.Conn` still feels awkward
+- add more compatibility tests around errors, edge cases, and unsupported commands
+- remove or reshape any transitional APIs that only existed to ease migration
 
 ## What good looks like
 
