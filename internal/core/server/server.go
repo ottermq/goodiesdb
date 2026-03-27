@@ -283,21 +283,6 @@ func (s *Server) executeCommand(conn net.Conn, request protocol.RESPValue) (prot
 		}
 		return anyToRESP(value), nil
 
-	case "LTRIM":
-		if len(parts) != 4 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'LTRIM' command"), nil
-		}
-		start, err1 := strconv.Atoi(parts[2])
-		stop, err2 := strconv.Atoi(parts[3])
-		if err1 != nil || err2 != nil {
-			return protocol.ErrorString("ERR value is not an integer or out of range"), nil
-		}
-		err := s.store.LTrim(dbIndex, parts[1], start, stop)
-		if err != nil {
-			return protocol.ErrorString("ERR " + err.Error()), nil
-		}
-		return protocol.SimpleString("OK"), nil
-
 	case "RENAME":
 		if len(parts) != 3 {
 			return protocol.ErrorString("ERR wrong number of arguments for 'RENAME' command"), nil

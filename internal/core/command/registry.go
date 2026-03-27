@@ -30,6 +30,7 @@ func NewRegistry() *Registry {
 	r.Register(NewLPushCommand())
 	r.Register(NewRPushCommand())
 	r.Register(NewLRangeCommand())
+	r.Register(NewLTrimCommand())
 
 	return r
 }
