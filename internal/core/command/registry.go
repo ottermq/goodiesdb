@@ -20,6 +20,8 @@ func NewRegistry() *Registry {
 	r.Register(NewDelCommand())
 	r.Register(NewExistsCommand())
 	r.Register(NewExpireCommand())
+	r.Register(NewIncrCommand())
+	r.Register(NewDecrCommand())
 
 	return r
 }
