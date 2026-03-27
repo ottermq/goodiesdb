@@ -198,6 +198,28 @@ func TestRPushAppendsValuesInOrder(t *testing.T) {
 	}
 }
 
+func TestLPopWithCountReturnsMultipleItems(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	if err := client.RPush(ctx, "lpop:count", "one", "two", "three").Err(); err != nil {
+		t.Fatalf("RPUSH setup failed: %v", err)
+	}
+
+	values, err := client.Do(ctx, "LPOP", "lpop:count", 2).StringSlice()
+	if err != nil {
+		t.Fatalf("LPOP count failed: %v", err)
+	}
+
+	expected := []string{"one", "two"}
+	if strings.Join(values, ",") != strings.Join(expected, ",") {
+		t.Fatalf("expected LPOP count result %v, got %v", expected, values)
+	}
+}
+
 func TestCommandErrorsVisibleThroughRedisClient(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

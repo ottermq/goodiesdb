@@ -240,49 +240,6 @@ func (s *Server) executeCommand(conn net.Conn, request protocol.RESPValue) (prot
 		}
 		return protocol.SimpleString("OK"), nil // FIX: Use protocol.SimpleString
 
-	case "LPOP":
-		if len(parts) != 2 && len(parts) != 3 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'LPOP' command"), nil
-		}
-		var count *int
-		if len(parts) == 3 {
-			c, err := strconv.Atoi(parts[2])
-			if err != nil {
-				return protocol.ErrorString("ERR value is out of range, must be positive"), nil
-			}
-			count = &c
-		}
-		value, err := s.store.LPop(dbIndex, parts[1], count)
-		if err != nil {
-			return protocol.ErrorString("ERR " + err.Error()), nil
-		}
-		// FIX: Convert to RESP type and return
-		if value == nil {
-			return s.Protocol.EncodeNil(), nil
-		}
-		return anyToRESP(value), nil
-
-	case "RPOP":
-		if len(parts) != 2 && len(parts) != 3 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'RPOP' command"), nil
-		}
-		var count *int
-		if len(parts) == 3 {
-			c, err := strconv.Atoi(parts[2])
-			if err != nil {
-				return protocol.ErrorString("ERR value is out of range, must be positive"), nil
-			}
-			count = &c
-		}
-		value, err := s.store.RPop(dbIndex, parts[1], count)
-		if err != nil {
-			return protocol.ErrorString("ERR " + err.Error()), nil
-		}
-		if value == nil {
-			return s.Protocol.EncodeNil(), nil
-		}
-		return anyToRESP(value), nil
-
 	case "RENAME":
 		if len(parts) != 3 {
 			return protocol.ErrorString("ERR wrong number of arguments for 'RENAME' command"), nil
