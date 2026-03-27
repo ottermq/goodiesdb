@@ -220,6 +220,146 @@ func TestLPopWithCountReturnsMultipleItems(t *testing.T) {
 	}
 }
 
+func TestRenameRenamesExistingKey(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	if err := client.Set(ctx, "old-key", "value", 0).Err(); err != nil {
+		t.Fatalf("SET old-key failed: %v", err)
+	}
+	if err := client.Rename(ctx, "old-key", "new-key").Err(); err != nil {
+		t.Fatalf("RENAME failed: %v", err)
+	}
+
+	value, err := client.Get(ctx, "new-key").Result()
+	if err != nil {
+		t.Fatalf("GET new-key failed: %v", err)
+	}
+	if value != "value" {
+		t.Fatalf("expected renamed value %q, got %q", "value", value)
+	}
+
+	_, err = client.Get(ctx, "old-key").Result()
+	if err != redis.Nil {
+		t.Fatalf("expected old-key to be missing after RENAME, got %v", err)
+	}
+}
+
+func TestEchoAndInfo(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	echo, err := client.Echo(ctx, "hello world").Result()
+	if err != nil {
+		t.Fatalf("ECHO failed: %v", err)
+	}
+	if echo != "hello world" {
+		t.Fatalf("expected ECHO result %q, got %q", "hello world", echo)
+	}
+
+	info, err := client.Info(ctx).Result()
+	if err != nil {
+		t.Fatalf("INFO failed: %v", err)
+	}
+	if !strings.Contains(info, "# Server") {
+		t.Fatalf("expected INFO output to contain server section, got %q", info)
+	}
+}
+
+func TestFlushDbAndFlushAll(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	db0 := newRedisClient(t, addr, 0)
+	db1 := newRedisClient(t, addr, 1)
+
+	if err := db0.Set(ctx, "flushdb:key", "db0", 0).Err(); err != nil {
+		t.Fatalf("SET flushdb:key failed: %v", err)
+	}
+	if err := db1.Set(ctx, "flushall:key", "db1", 0).Err(); err != nil {
+		t.Fatalf("SET flushall:key failed: %v", err)
+	}
+
+	if err := db0.FlushDB(ctx).Err(); err != nil {
+		t.Fatalf("FLUSHDB failed: %v", err)
+	}
+
+	_, err := db0.Get(ctx, "flushdb:key").Result()
+	if err != redis.Nil {
+		t.Fatalf("expected db0 key to be missing after FLUSHDB, got %v", err)
+	}
+	value, err := db1.Get(ctx, "flushall:key").Result()
+	if err != nil {
+		t.Fatalf("expected db1 key to survive FLUSHDB, got %v", err)
+	}
+	if value != "db1" {
+		t.Fatalf("expected db1 key value %q, got %q", "db1", value)
+	}
+
+	if err := db0.FlushAll(ctx).Err(); err != nil {
+		t.Fatalf("FLUSHALL failed: %v", err)
+	}
+
+	_, err = db1.Get(ctx, "flushall:key").Result()
+	if err != redis.Nil {
+		t.Fatalf("expected db1 key to be missing after FLUSHALL, got %v", err)
+	}
+}
+
+func TestScanFindsMatchingKeys(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	if err := client.Set(ctx, "scan:1", "a", 0).Err(); err != nil {
+		t.Fatalf("SET scan:1 failed: %v", err)
+	}
+	if err := client.Set(ctx, "scan:2", "b", 0).Err(); err != nil {
+		t.Fatalf("SET scan:2 failed: %v", err)
+	}
+	if err := client.Set(ctx, "other", "c", 0).Err(); err != nil {
+		t.Fatalf("SET other failed: %v", err)
+	}
+
+	keys, cursor, err := client.Scan(ctx, 0, "scan:*", 10).Result()
+	if err != nil {
+		t.Fatalf("SCAN failed: %v", err)
+	}
+	if cursor != 0 {
+		t.Fatalf("expected SCAN cursor to be 0, got %d", cursor)
+	}
+	sort.Strings(keys)
+	expected := []string{"scan:1", "scan:2"}
+	if strings.Join(keys, ",") != strings.Join(expected, ",") {
+		t.Fatalf("expected SCAN keys %v, got %v", expected, keys)
+	}
+}
+
+func TestAuthAcceptsValidPassword(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	result, err := client.Do(ctx, "AUTH", "guest").Text()
+	if err != nil {
+		t.Fatalf("AUTH failed: %v", err)
+	}
+	if result != "OK" {
+		t.Fatalf("expected AUTH result %q, got %q", "OK", result)
+	}
+}
+
 func TestCommandErrorsVisibleThroughRedisClient(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

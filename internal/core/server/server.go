@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -182,170 +181,7 @@ func (s *Server) executeCommand(conn net.Conn, request protocol.RESPValue) (prot
 		fmt.Printf("invoking %s", cmd.Name())
 		return s.invokeCommand(cmd, args, conn, dbIndex)
 	}
-	// if !ok, probably not registered, use switch-case (will be removed later)
-
-	switch cmdName {
-
-	case "AUTH":
-		if len(parts) != 2 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'AUTH' command"), nil
-		}
-		if parts[1] == s.config.Password {
-			s.mu.Lock()
-			s.authenticatedConnections[conn] = true
-			s.mu.Unlock()
-			return protocol.SimpleString("OK"), nil
-		}
-		return protocol.ErrorString("ERR invalid password"), nil
-
-	case "SET":
-		if len(parts) < 3 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'SET' command"), nil
-		}
-		ok, err := s.store.Set(dbIndex, parts[1], parts[2], parts[3:]...)
-		if err != nil {
-			return protocol.ErrorString(err.Error()), nil
-		}
-		if ok {
-			return protocol.SimpleString("OK"), nil
-		}
-		return s.Protocol.EncodeNil(), nil
-
-	case "GET":
-		if len(parts) != 2 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'GET' command"), nil
-		}
-		value, ok := s.store.Get(dbIndex, parts[1])
-		if !ok {
-			return s.Protocol.EncodeNil(), nil
-		}
-		// Convert to RESP type
-		r, err := convertValueTypeToRESPType(value)
-		if err != nil {
-			return protocol.ErrorString("ERR " + err.Error()), nil
-		}
-		return r, nil
-
-	case "SELECT":
-		if len(parts) != 2 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'SELECT' command"), nil
-		}
-		dbIndex, err := strconv.Atoi(parts[1])
-		if err != nil {
-			return protocol.ErrorString("ERR invalid DB index"), nil
-		}
-		err = s.SelectDb(conn, dbIndex)
-		if err != nil {
-			return protocol.ErrorString("ERR " + err.Error()), nil
-		}
-		return protocol.SimpleString("OK"), nil // FIX: Use protocol.SimpleString
-
-	case "RENAME":
-		if len(parts) != 3 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'RENAME' command"), nil
-		}
-		if err := s.store.Rename(dbIndex, parts[1], parts[2]); err != nil {
-			return protocol.ErrorString("ERR " + err.Error()), nil
-		}
-		return protocol.SimpleString("OK"), nil
-
-	case "KEYS":
-		if len(parts) != 2 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'KEYS' command"), nil
-		}
-		pattern := parts[1]
-		keys, err := s.store.Keys(dbIndex, pattern)
-		if err != nil {
-			return protocol.ErrorString("ERR " + err.Error()), nil
-		}
-		return stringSliceToRESPArray(keys), nil
-
-	case "INFO":
-		info := s.Info()
-		return protocol.BulkString([]byte(info)), nil
-
-	case "PING":
-		if len(parts) == 1 {
-			return protocol.SimpleString("PONG"), nil
-		}
-		// PING with message returns the message
-		return protocol.BulkString([]byte(parts[1])), nil
-
-	case "ECHO":
-		if len(parts) < 2 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'ECHO' command"), nil
-		}
-		msg := strings.Join(parts[1:], " ")
-		return protocol.BulkString([]byte(msg)), nil
-
-	case "QUIT":
-		// FIX: Return OK before closing
-		return protocol.SimpleString("OK"), nil
-
-	case "FLUSHDB":
-		s.store.FlushDb(dbIndex)
-		return protocol.SimpleString("OK"), nil // FIX: Return instead of fmt.Fprintln
-
-	case "FLUSHALL":
-		s.store.FlushAll()
-		return protocol.SimpleString("OK"), nil // FIX: Return instead of fmt.Fprintln
-
-	case "SCAN":
-		if len(parts) < 2 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'SCAN' command"), nil
-		}
-		cursor, err := strconv.Atoi(parts[1])
-		if err != nil {
-			return protocol.ErrorString("ERR invalid cursor"), nil
-		}
-
-		pattern := "*"
-		count := 10
-
-		for i := 2; i < len(parts); i++ {
-			switch strings.ToUpper(parts[i]) {
-			case "MATCH":
-				if i+1 >= len(parts) {
-					return protocol.ErrorString("ERR syntax error"), nil
-				}
-				pattern = parts[i+1]
-				i++
-			case "COUNT":
-				if i+1 >= len(parts) {
-					return protocol.ErrorString("ERR syntax error"), nil
-				}
-				c, err := strconv.Atoi(parts[i+1])
-				if err != nil || c <= 0 {
-					return protocol.ErrorString("ERR value is not an integer or out of range"), nil
-				}
-				count = c
-				i++
-			default:
-				return protocol.ErrorString("ERR syntax error"), nil
-			}
-		}
-
-		newCursor, keys, err := s.store.Scan(dbIndex, cursor, pattern, count)
-		if err != nil {
-			return protocol.ErrorString("ERR " + err.Error()), nil
-		}
-
-		// SCAN returns [cursor, [keys]]
-		keysArray := make([]protocol.RESPValue, len(keys))
-		for i, k := range keys {
-			keysArray[i] = protocol.BulkString([]byte(k))
-		}
-
-		result := protocol.Array{
-			protocol.BulkString([]byte(strconv.Itoa(newCursor))),
-			protocol.Array(keysArray),
-		}
-		return result, nil
-
-	default:
-		return protocol.ErrorString("ERR unknown command '" + parts[0] + "'"), nil
-	}
-	return nil, nil
+	return protocol.ErrorString("ERR unknown command '" + parts[0] + "'"), nil
 }
 
 func (s *Server) invokeCommand(cmd command.Command, args []string, conn net.Conn, dbIndex int) (protocol.RESPValue, error) {
@@ -363,6 +199,15 @@ func (s *Server) invokeCommand(cmd command.Command, args []string, conn net.Conn
 		DBIndex:   dbIndex,
 		Conn:      conn,
 		Timestamp: time.Now(),
+		Auth: func(password string) bool {
+			return s.Authenticate(conn, password)
+		},
+		SelectDB: func(index int) error {
+			return s.SelectDb(conn, index)
+		},
+		Info: func() protocol.BulkString {
+			return s.Info()
+		},
 	}
 
 	return cmd.Execute(ctx, args)

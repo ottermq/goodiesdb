@@ -16,6 +16,16 @@ func (s *Server) isAuthenticates(conn net.Conn) bool {
 	return s.authenticatedConnections[conn]
 }
 
+func (s *Server) Authenticate(conn net.Conn, password string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if password != s.config.Password {
+		return false
+	}
+	s.authenticatedConnections[conn] = true
+	return true
+}
+
 func (s *Server) getCurrentDb(conn net.Conn) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()

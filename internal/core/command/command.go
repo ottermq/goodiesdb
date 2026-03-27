@@ -23,6 +23,9 @@ type Context struct {
 	DBIndex   int
 	Conn      net.Conn
 	Timestamp time.Time
+	Auth      func(password string) bool
+	SelectDB  func(dbIndex int) error
+	Info      func() protocol.BulkString
 }
 
 var ErrWrongNumberOfArguments = fmt.Errorf("ERR wrong number of arguments for command")

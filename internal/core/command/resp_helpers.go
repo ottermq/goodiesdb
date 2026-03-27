@@ -24,3 +24,11 @@ func anySliceToRESPArray(items []any) protocol.Array {
 	}
 	return arr
 }
+
+func stringSliceToRESPArray(items []string) protocol.Array {
+	arr := make(protocol.Array, len(items))
+	for i, item := range items {
+		arr[i] = protocol.BulkString([]byte(item))
+	}
+	return arr
+}

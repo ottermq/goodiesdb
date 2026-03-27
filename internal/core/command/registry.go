@@ -33,6 +33,17 @@ func NewRegistry() *Registry {
 	r.Register(NewLTrimCommand())
 	r.Register(NewLPopCommand())
 	r.Register(NewRPopCommand())
+	r.Register(NewAuthCommand())
+	r.Register(NewSelectCommand())
+	r.Register(NewRenameCommand())
+	r.Register(NewKeysCommand())
+	r.Register(NewInfoCommand())
+	r.Register(NewPingCommand())
+	r.Register(NewEchoCommand())
+	r.Register(NewQuitCommand())
+	r.Register(NewFlushDBCommand())
+	r.Register(NewFlushAllCommand())
+	r.Register(NewScanCommand())
 
 	return r
 }
