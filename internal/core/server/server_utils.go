@@ -48,6 +48,48 @@ func (s *Server) SelectDb(conn net.Conn, dbIndex int) error {
 	return nil
 }
 
+func (s *Server) Addr() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.listener == nil {
+		return ""
+	}
+
+	return s.listener.Addr().String()
+}
+
+func (s *Server) WaitForReady(timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		addr := s.Addr()
+		if addr != "" {
+			conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+			if err == nil {
+				_ = conn.Close()
+				return nil
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return fmt.Errorf("server did not become ready within %s", timeout)
+}
+
+func (s *Server) stopAcceptLoop() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	select {
+	case <-s.shutdownChan:
+	default:
+		close(s.shutdownChan)
+	}
+
+	if s.listener != nil {
+		_ = s.listener.Close()
+	}
+}
+
 func (s *Server) startRDB() {
 	rdbFilepath := filepath.Join(s.dataDir, "dump.rdb")
 	for {

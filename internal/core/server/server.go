@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -30,6 +31,7 @@ type Server struct {
 	dataDir                  string
 	Protocol                 protocol.Protocol
 	commandRegistry          *command.Registry
+	listener                 net.Listener
 }
 
 // NewServer creates a new server
@@ -83,15 +85,26 @@ func (s *Server) Start() error {
 	// set addr string (host and port) using config
 	addr := fmt.Sprintf("%s:%s", s.config.Host, s.config.Port)
 	ln, err := net.Listen("tcp", addr)
-	fmt.Printf("Redis Clone Server %s started on %s:%s\n", s.config.Version, s.config.Host, s.config.Port)
 	if err != nil {
 		return err
 	}
-	defer ln.Close()
+	s.mu.Lock()
+	s.listener = ln
+	s.mu.Unlock()
+	defer func() {
+		s.mu.Lock()
+		s.listener = nil
+		s.mu.Unlock()
+		_ = ln.Close()
+	}()
+	fmt.Printf("Redis Clone Server %s started on %s\n", s.config.Version, ln.Addr().String())
 
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return nil
+			}
 			fmt.Println("Error accepting connection:", err)
 			continue
 		}
@@ -101,6 +114,8 @@ func (s *Server) Start() error {
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown() {
+	s.stopAcceptLoop()
+
 	if s.config.UseAOF {
 		if s.store.AOFChannel() != nil {
 			close(s.store.AOFChannel())

@@ -7,9 +7,6 @@ func (s *Store) Delete(dbIndex int, key string) {
 
 // delKey deletes a key from the store and its expiration (protected)
 func (s *Store) delKey(dbIndex int, key string) {
-	// mu
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	delete(s.data[dbIndex], key)
 }
 
