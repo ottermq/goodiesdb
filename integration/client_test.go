@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -191,6 +192,90 @@ func TestCommandErrorsVisibleThroughRedisClient(t *testing.T) {
 	_, err = client.Incr(ctx, "not-an-int").Result()
 	if err == nil || !strings.Contains(err.Error(), "not an integer") {
 		t.Fatalf("expected integer error, got %v", err)
+	}
+}
+
+func TestListEdgeCommands(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	if err := client.RPush(ctx, "numbers", "one", "two", "three", "four").Err(); err != nil {
+		t.Fatalf("RPUSH failed: %v", err)
+	}
+
+	popped, err := client.Do(ctx, "RPOP", "numbers", 2).StringSlice()
+	if err != nil {
+		t.Fatalf("RPOP count failed: %v", err)
+	}
+	expectedPopped := []string{"three", "four"}
+	if strings.Join(popped, ",") != strings.Join(expectedPopped, ",") {
+		t.Fatalf("expected RPOP count result %v, got %v", expectedPopped, popped)
+	}
+
+	if err := client.LTrim(ctx, "numbers", 0, 0).Err(); err != nil {
+		t.Fatalf("LTRIM failed: %v", err)
+	}
+
+	values, err := client.LRange(ctx, "numbers", 0, -1).Result()
+	if err != nil {
+		t.Fatalf("LRANGE after LTRIM failed: %v", err)
+	}
+	expectedRemaining := []string{"one"}
+	if strings.Join(values, ",") != strings.Join(expectedRemaining, ",") {
+		t.Fatalf("expected trimmed list %v, got %v", expectedRemaining, values)
+	}
+}
+
+func TestStringAndIntrospectionCommands(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	if err := client.Set(ctx, "greeting", "hello world", 0).Err(); err != nil {
+		t.Fatalf("SET greeting failed: %v", err)
+	}
+	if err := client.RPush(ctx, "animals", "cat", "dog").Err(); err != nil {
+		t.Fatalf("RPUSH animals failed: %v", err)
+	}
+
+	length, err := client.StrLen(ctx, "greeting").Result()
+	if err != nil {
+		t.Fatalf("STRLEN failed: %v", err)
+	}
+	if length != 11 {
+		t.Fatalf("expected STRLEN 11, got %d", length)
+	}
+
+	substr, err := client.GetRange(ctx, "greeting", 0, 4).Result()
+	if err != nil {
+		t.Fatalf("GETRANGE failed: %v", err)
+	}
+	if substr != "hello" {
+		t.Fatalf("expected GETRANGE result %q, got %q", "hello", substr)
+	}
+
+	valueType, err := client.Type(ctx, "animals").Result()
+	if err != nil {
+		t.Fatalf("TYPE failed: %v", err)
+	}
+	if valueType != "list" {
+		t.Fatalf("expected TYPE result %q, got %q", "list", valueType)
+	}
+
+	keys, err := client.Keys(ctx, "*g*").Result()
+	if err != nil {
+		t.Fatalf("KEYS failed: %v", err)
+	}
+	sort.Strings(keys)
+	expectedKeys := []string{"greeting"}
+	sort.Strings(expectedKeys)
+	if strings.Join(keys, ",") != strings.Join(expectedKeys, ",") {
+		t.Fatalf("expected KEYS result %v, got %v", expectedKeys, keys)
 	}
 }
 
