@@ -226,13 +226,6 @@ func (s *Server) executeCommand(conn net.Conn, request protocol.RESPValue) (prot
 		}
 		return r, nil
 
-	case "SETNX":
-		if len(parts) != 3 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'SETNX' command"), nil
-		}
-		result := s.store.SetNX(dbIndex, parts[1], parts[2])
-		return protocol.Integer(result), nil
-
 	case "SELECT":
 		if len(parts) != 2 {
 			return protocol.ErrorString("ERR wrong number of arguments for 'SELECT' command"), nil

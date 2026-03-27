@@ -23,6 +23,8 @@ func NewRegistry() *Registry {
 	r.Register(NewIncrCommand())
 	r.Register(NewDecrCommand())
 	r.Register(NewTTLCommand())
+	r.Register(NewSetNXCommand())
+
 	return r
 }
 

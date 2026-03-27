@@ -321,6 +321,38 @@ func TestTTLReportsExpiringPersistentAndMissingKeys(t *testing.T) {
 	}
 }
 
+func TestSetNXOnlySetsMissingKeys(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	created, err := client.SetNX(ctx, "setnx:key", "first", 0).Result()
+	if err != nil {
+		t.Fatalf("SETNX first call failed: %v", err)
+	}
+	if !created {
+		t.Fatalf("expected first SETNX call to create the key")
+	}
+
+	created, err = client.SetNX(ctx, "setnx:key", "second", 0).Result()
+	if err != nil {
+		t.Fatalf("SETNX second call failed: %v", err)
+	}
+	if created {
+		t.Fatalf("expected second SETNX call to leave the key unchanged")
+	}
+
+	value, err := client.Get(ctx, "setnx:key").Result()
+	if err != nil {
+		t.Fatalf("GET after SETNX failed: %v", err)
+	}
+	if value != "first" {
+		t.Fatalf("expected SETNX key to keep original value %q, got %q", "first", value)
+	}
+}
+
 func TestListEdgeCommands(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
