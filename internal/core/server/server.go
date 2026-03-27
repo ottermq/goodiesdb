@@ -344,13 +344,6 @@ func (s *Server) executeCommand(conn net.Conn, request protocol.RESPValue) (prot
 		}
 		return protocol.SimpleString("OK"), nil
 
-	case "TYPE":
-		if len(parts) != 2 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'TYPE' command"), nil
-		}
-		vtype := s.store.Type(dbIndex, parts[1])
-		return protocol.SimpleString(vtype), nil
-
 	case "KEYS":
 		if len(parts) != 2 {
 			return protocol.ErrorString("ERR wrong number of arguments for 'KEYS' command"), nil
@@ -443,32 +436,6 @@ func (s *Server) executeCommand(conn net.Conn, request protocol.RESPValue) (prot
 			protocol.Array(keysArray),
 		}
 		return result, nil
-
-	case "GETRANGE":
-		fmt.Println("executing GETRANGE")
-		if len(parts) != 4 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'GETRANGE' command"), nil
-		}
-		start, err1 := strconv.Atoi(parts[2])
-		end, err2 := strconv.Atoi(parts[3])
-		if err1 != nil || err2 != nil {
-			return protocol.ErrorString("ERR value is not an integer or out of range"), nil
-		}
-		value, err := s.store.GetRange(dbIndex, parts[1], start, end)
-		if err != nil {
-			return protocol.ErrorString("ERR " + err.Error()), nil
-		}
-		return protocol.BulkString([]byte(value)), nil
-
-	case "STRLEN":
-		if len(parts) != 2 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'STRLEN' command"), nil
-		}
-		length, err := s.store.StrLen(dbIndex, parts[1])
-		if err != nil {
-			return protocol.ErrorString("ERR " + err.Error()), nil
-		}
-		return protocol.Integer(int64(length)), nil
 
 	default:
 		return protocol.ErrorString("ERR unknown command '" + parts[0] + "'"), nil

@@ -24,6 +24,9 @@ func NewRegistry() *Registry {
 	r.Register(NewDecrCommand())
 	r.Register(NewTTLCommand())
 	r.Register(NewSetNXCommand())
+	r.Register(NewTypeCommand())
+	r.Register(NewStrLenCommand())
+	r.Register(NewGetRangeCommand())
 
 	return r
 }
