@@ -34,9 +34,9 @@ At a high level, GoodiesDB works like this:
 
 ### Command layer
 
-`internal/core/command/` is an in-progress abstraction layer intended to hold command-specific execution logic outside the server.
+`internal/core/command/` owns command-specific execution logic, validation, and a small set of shared command helpers.
 
-Today it is only partially adopted.
+This layer is now the primary command-dispatch mechanism.
 
 ### Protocol
 
@@ -53,7 +53,8 @@ Today it is only partially adopted.
 - The store currently supports 16 logical databases.
 - Database selection is per connection.
 - Persistence is optional and configured through server config.
-- The codebase currently uses a hybrid command-dispatch model during the registry refactor.
+- Command dispatch is now registry-based rather than switch-based.
+- Nil reply encoding is handled at the command/server layer, not inside the store.
 
 ## Testing philosophy
 
@@ -74,6 +75,6 @@ This should gradually replace the earlier manual-only workflow of opening a Redi
 
 ## Architectural debt worth watching
 
-- command behavior is split between registry-based commands and the server switch
-- protocol concerns have leaked into the store during the refactor
+- connection-aware behavior still depends directly on `net.Conn`
+- command context currently carries server callbacks for behaviors like auth and DB selection
 - connection state is tracked directly on `net.Conn`, which may become awkward as command behavior grows

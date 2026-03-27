@@ -22,7 +22,7 @@ When making decisions, prefer:
 - `cmd/goodiesdb-server/main.go`: process startup, config loading, graceful shutdown.
 - `internal/core/server/`: TCP server, RESP request handling, per-connection state, command dispatch.
 - `internal/core/store/`: in-memory multi-database data store and data-type operations.
-- `internal/core/command/`: in-progress command registry refactor.
+- `internal/core/command/`: command implementations and shared validation/RESP helpers.
 - `internal/protocol/`: RESP abstractions and RESP2 implementation.
 - `internal/persistence/aof/`: append-only file persistence and replay.
 - `internal/persistence/rdb/`: snapshot persistence.
@@ -37,37 +37,24 @@ What was being built:
 - A migration path away from the large `switch` in `internal/core/server/server.go`.
 - Shared command validation and execution context.
 
-What is already migrated:
+Current status:
 
-- `GET`
-- `SET`
-
-What still uses the legacy path:
-
-- Nearly every other command in `internal/core/server/server.go`
+- The command registry migration is complete for the currently implemented command set.
+- The legacy command switch has been removed.
+- Command validation now lives in `Validate()` with shared helpers in the command package.
 
 ## Important findings
 
-- The branch compiles, but it is not fully stabilized.
-- There is a lock recursion bug in the store layer:
-  - `Store.Del()` takes the store lock and then calls `delKey()`
-  - `Store.Rename()` takes the store lock and then calls `delKey()`
-  - `delKey()` also takes the same lock
-- This causes tests to hang and timeout.
-
-Affected files:
-
-- `internal/core/store/store.go`
-- `internal/core/store/store_utils.go`
+- The original branch-level deadlock in the store delete path has been fixed.
+- The store no longer knows about protocol encoding.
+- Nil reply shaping now belongs to the command/server layer, not the store.
 
 ## Known design tension
 
-The current refactor mixes command-layer concerns and store-layer concerns:
-
-- `Store` now holds `Protocol` so commands can emit RESP nil values.
 - `GET` still contains expiration handling that partly overlaps with `Store.Get()`.
+- Connection-aware behavior still depends directly on `net.Conn` and callbacks in command context.
 
-This is acceptable as a temporary bridge, but future refactor work should move protocol-aware response shaping toward the command/server layer rather than the store.
+Those are the main remaining cleanup areas after the registry migration itself.
 
 ## Good first places to look
 
@@ -76,8 +63,8 @@ If you are resuming the command registry work, start here:
 1. `internal/core/server/server.go`
 2. `internal/core/command/command.go`
 3. `internal/core/command/registry.go`
-4. `internal/core/command/get.go`
-5. `internal/core/command/set.go`
+4. `internal/core/command/validate_helpers.go`
+5. `internal/core/command/resp_helpers.go`
 6. `docs/PROJECT_STATUS.md`
 7. `docs/refactoring/COMMAND_REGISTRY_REFACTOR.md`
 

@@ -31,8 +31,13 @@ This project was historically tested manually through Redis clients. The new goa
 
 - strengthen the `Command` abstraction
 - decide where argument validation belongs
-- reduce protocol coupling inside `Store`
-- add tests for registry-based dispatch
+- add tests for registry-based dispatch and edge-case behavior
+
+This phase is largely complete:
+
+- registry-based dispatch is now the primary path
+- the store has been decoupled from protocol encoding
+- command validation has been consolidated around `Validate()`
 
 ### 4. Migrate easy commands first
 

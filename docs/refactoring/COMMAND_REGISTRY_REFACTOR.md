@@ -58,14 +58,9 @@ Recommendation:
 
 ### 3. Protocol concerns leaked into the store
 
-`Store` currently has a `Protocol` field so commands can return protocol-specific nil values.
+That coupling has now been removed.
 
-Recommendation:
-
-- keep this only if necessary as a short-term bridge
-- prefer moving response-shaping helpers into command context or server utilities
-
-The store should ideally stay focused on data and behavior, not wire format concerns.
+Nil reply shaping now lives in the command/server layer, which is a better separation of concerns.
 
 ### 4. Expiration ownership is blurry
 
@@ -84,7 +79,6 @@ The main remaining work is cleanup and hardening, not command extraction.
 Recommended follow-ups:
 
 - keep the `Command` interface small and avoid reintroducing duplicate validation metadata
-- decide whether `Store.Protocol` should remain in the store layer
 - tighten session-aware behavior where raw `net.Conn` still feels awkward
 - add more compatibility tests around errors, edge cases, and unsupported commands
 - remove or reshape any transitional APIs that only existed to ease migration

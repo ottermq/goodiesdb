@@ -38,6 +38,8 @@ Recent branch commits, in order:
 
 This strongly suggests the refactor stopped shortly after a vertical slice for `GET` and `SET`.
 
+Since then, the branch has been continued and the migration has been completed for the currently implemented commands.
+
 ## Current command execution model
 
 The command registry migration is now effectively complete for the currently implemented command set.
@@ -60,7 +62,7 @@ The branch originally contained a lock recursion bug in the delete path. That is
 
 ### Transitional layering smell
 
-`Store` currently carries a `Protocol` field so commands can emit RESP nil replies. This is workable as a bridge, but it mixes storage and protocol concerns.
+That bridge has now been removed. Nil reply shaping is handled by the command/server layer instead of the store.
 
 ### Responsibility overlap
 
@@ -70,11 +72,11 @@ The branch originally contained a lock recursion bug in the delete path. That is
 
 Recommended order:
 
-1. Clarify the command abstraction and trim leftover transitional API shape.
-2. Decide whether `Store.Protocol` should remain or be removed.
-3. Strengthen integration coverage for edge cases and unsupported command behavior.
-4. Continue improving Redis-client compatibility command by command.
-5. Revisit whether session-aware commands need a richer connection abstraction.
+1. Strengthen integration coverage for edge cases and unsupported command behavior.
+2. Continue improving Redis-client compatibility command by command.
+3. Revisit whether session-aware commands need a richer connection abstraction.
+4. Clarify expiration responsibility between command and store layers.
+5. Keep trimming transitional abstractions where they no longer pay for themselves.
 
 ## Testing direction
 
