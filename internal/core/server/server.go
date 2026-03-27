@@ -226,13 +226,6 @@ func (s *Server) executeCommand(conn net.Conn, request protocol.RESPValue) (prot
 		}
 		return r, nil
 
-	case "DEL":
-		if len(parts) != 2 {
-			return protocol.ErrorString("ERR wrong number of arguments for 'DEL' command"), nil
-		}
-		s.store.Del(dbIndex, parts[1])
-		return protocol.Integer(1), nil // Return count of deleted keys
-
 	case "EXISTS":
 		if len(parts) < 2 {
 			return protocol.ErrorString("ERR wrong number of arguments for 'EXISTS' command"), nil

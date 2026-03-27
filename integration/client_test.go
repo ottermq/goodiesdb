@@ -195,6 +195,31 @@ func TestCommandErrorsVisibleThroughRedisClient(t *testing.T) {
 	}
 }
 
+func TestDelRemovesExistingKey(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	if err := client.Set(ctx, "delete-me", "value", 0).Err(); err != nil {
+		t.Fatalf("SET failed: %v", err)
+	}
+
+	deleted, err := client.Del(ctx, "delete-me").Result()
+	if err != nil {
+		t.Fatalf("DEL failed: %v", err)
+	}
+	if deleted != 1 {
+		t.Fatalf("expected DEL to return 1, got %d", deleted)
+	}
+
+	_, err = client.Get(ctx, "delete-me").Result()
+	if err != redis.Nil {
+		t.Fatalf("expected redis.Nil after DEL, got %v", err)
+	}
+}
+
 func TestListEdgeCommands(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
