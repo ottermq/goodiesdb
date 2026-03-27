@@ -29,6 +29,7 @@ func NewRegistry() *Registry {
 	r.Register(NewGetRangeCommand())
 	r.Register(NewLPushCommand())
 	r.Register(NewRPushCommand())
+	r.Register(NewLRangeCommand())
 
 	return r
 }
