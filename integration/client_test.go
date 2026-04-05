@@ -624,6 +624,184 @@ func TestStringAndIntrospectionCommands(t *testing.T) {
 	}
 }
 
+func TestHashCommands(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	added, err := client.HSet(ctx, "session:1", "user_id", "1", "username", "andre", "avatar_color", "#3498DB").Result()
+	if err != nil {
+		t.Fatalf("initial HSET failed: %v", err)
+	}
+	if added != 3 {
+		t.Fatalf("expected initial HSET to add 3 fields, got %d", added)
+	}
+
+	added, err = client.HSet(ctx, "session:1", "username", "andre-updated", "avatar_url", "https://example.com/avatar.png").Result()
+	if err != nil {
+		t.Fatalf("second HSET failed: %v", err)
+	}
+	if added != 1 {
+		t.Fatalf("expected second HSET to add 1 new field, got %d", added)
+	}
+
+	username, err := client.HGet(ctx, "session:1", "username").Result()
+	if err != nil {
+		t.Fatalf("HGET existing field failed: %v", err)
+	}
+	if username != "andre-updated" {
+		t.Fatalf("expected HGET username %q, got %q", "andre-updated", username)
+	}
+
+	_, err = client.HGet(ctx, "session:1", "missing").Result()
+	if err != redis.Nil {
+		t.Fatalf("expected redis.Nil for missing hash field, got %v", err)
+	}
+
+	all, err := client.HGetAll(ctx, "session:1").Result()
+	if err != nil {
+		t.Fatalf("HGETALL failed: %v", err)
+	}
+	expectedAll := map[string]string{
+		"user_id":      "1",
+		"username":     "andre-updated",
+		"avatar_color": "#3498DB",
+		"avatar_url":   "https://example.com/avatar.png",
+	}
+	if len(all) != len(expectedAll) {
+		t.Fatalf("expected HGETALL size %d, got %d", len(expectedAll), len(all))
+	}
+	for field, expected := range expectedAll {
+		if got := all[field]; got != expected {
+			t.Fatalf("expected HGETALL[%q] = %q, got %q", field, expected, got)
+		}
+	}
+
+	values, err := client.HMGet(ctx, "session:1", "user_id", "missing", "avatar_url").Result()
+	if err != nil {
+		t.Fatalf("HMGET failed: %v", err)
+	}
+	if len(values) != 3 {
+		t.Fatalf("expected HMGET to return 3 values, got %d", len(values))
+	}
+	if values[0] != "1" {
+		t.Fatalf("expected HMGET first value %q, got %v", "1", values[0])
+	}
+	if values[1] != nil {
+		t.Fatalf("expected HMGET missing field to be nil, got %v", values[1])
+	}
+	if values[2] != "https://example.com/avatar.png" {
+		t.Fatalf("expected HMGET third value to match avatar_url, got %v", values[2])
+	}
+
+	exists, err := client.HExists(ctx, "session:1", "avatar_color").Result()
+	if err != nil {
+		t.Fatalf("HEXISTS failed: %v", err)
+	}
+	if !exists {
+		t.Fatalf("expected HEXISTS to return true for avatar_color")
+	}
+
+	length, err := client.HLen(ctx, "session:1").Result()
+	if err != nil {
+		t.Fatalf("HLEN failed: %v", err)
+	}
+	if length != 4 {
+		t.Fatalf("expected HLEN 4, got %d", length)
+	}
+
+	keys, err := client.HKeys(ctx, "session:1").Result()
+	if err != nil {
+		t.Fatalf("HKEYS failed: %v", err)
+	}
+	sort.Strings(keys)
+	expectedKeys := []string{"avatar_color", "avatar_url", "user_id", "username"}
+	if strings.Join(keys, ",") != strings.Join(expectedKeys, ",") {
+		t.Fatalf("expected HKEYS %v, got %v", expectedKeys, keys)
+	}
+
+	vals, err := client.HVals(ctx, "session:1").Result()
+	if err != nil {
+		t.Fatalf("HVALS failed: %v", err)
+	}
+	sort.Strings(vals)
+	expectedVals := []string{"#3498DB", "1", "andre-updated", "https://example.com/avatar.png"}
+	sort.Strings(expectedVals)
+	if strings.Join(vals, ",") != strings.Join(expectedVals, ",") {
+		t.Fatalf("expected HVALS %v, got %v", expectedVals, vals)
+	}
+
+	deleted, err := client.HDel(ctx, "session:1", "avatar_color", "missing").Result()
+	if err != nil {
+		t.Fatalf("HDEL failed: %v", err)
+	}
+	if deleted != 1 {
+		t.Fatalf("expected HDEL to delete 1 field, got %d", deleted)
+	}
+
+	length, err = client.HLen(ctx, "session:1").Result()
+	if err != nil {
+		t.Fatalf("HLEN after HDEL failed: %v", err)
+	}
+	if length != 3 {
+		t.Fatalf("expected HLEN after HDEL to be 3, got %d", length)
+	}
+}
+
+func TestHashCommandsRespectExpiration(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	if err := client.HSet(ctx, "hash:expiring", "field", "value").Err(); err != nil {
+		t.Fatalf("HSET failed: %v", err)
+	}
+	if err := client.Expire(ctx, "hash:expiring", time.Second).Err(); err != nil {
+		t.Fatalf("EXPIRE failed: %v", err)
+	}
+
+	time.Sleep(1200 * time.Millisecond)
+
+	_, err := client.HGet(ctx, "hash:expiring", "field").Result()
+	if err != redis.Nil {
+		t.Fatalf("expected redis.Nil for expired hash field, got %v", err)
+	}
+
+	length, err := client.HLen(ctx, "hash:expiring").Result()
+	if err != nil {
+		t.Fatalf("HLEN on expired hash failed: %v", err)
+	}
+	if length != 0 {
+		t.Fatalf("expected HLEN on expired hash to be 0, got %d", length)
+	}
+}
+
+func TestHashCommandsReturnWrongTypeForNonHashKeys(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	if err := client.Set(ctx, "plain:string", "value", 0).Err(); err != nil {
+		t.Fatalf("SET failed: %v", err)
+	}
+
+	_, err := client.HGet(ctx, "plain:string", "field").Result()
+	if err == nil || !strings.Contains(err.Error(), "WRONGTYPE") {
+		t.Fatalf("expected WRONGTYPE from HGET on string key, got %v", err)
+	}
+
+	_, err = client.HSet(ctx, "plain:string", "field", "value").Result()
+	if err == nil || !strings.Contains(err.Error(), "WRONGTYPE") {
+		t.Fatalf("expected WRONGTYPE from HSET on string key, got %v", err)
+	}
+}
+
 func startTestServer(t *testing.T) string {
 	t.Helper()
 

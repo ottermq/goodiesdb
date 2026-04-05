@@ -3,7 +3,7 @@
 [![Go](https://github.com/andrelcunha/goodiesdb/actions/workflows/go.yml/badge.svg)](https://github.com/andrelcunha/goodiesdb/actions/workflows/go.yml)
 [![Docker Image CI](https://github.com/andrelcunha/goodiesdb/actions/workflows/docker-image.yml/badge.svg)](https://github.com/andrelcunha/goodiesdb/actions/workflows/docker-image.yml)
 
-GoodiesDb started as a Redis implementation written in Go, serving as an educational project to learn and understand the inner workings of Redis, a popular in-memory data structure store. The current state of the project implements a subset of Redis's commands, including `AUTH`, `SET`, `GET`, `DEL`, `EXISTS`, `SETNX`, `EXPIRE`, `INCR`, `DECR`, `TTL`, `SELECT`, `LPUSH`, `RPUSH`, `LPOP`, `RPOP`, `LRANGE`, `LTRIM`, `RENAME`, `TYPE`, `KEYS`, `INFO`, `PING`, `ECHO`, `QUIT`, `FLUSHDB` and `FLUSHALL`.
+GoodiesDb started as a Redis implementation written in Go, serving as an educational project to learn and understand the inner workings of Redis, a popular in-memory data structure store. The current state of the project implements a subset of Redis's commands, including `AUTH`, `SET`, `GET`, `DEL`, `EXISTS`, `SETNX`, `EXPIRE`, `INCR`, `DECR`, `TTL`, `SELECT`, `LPUSH`, `RPUSH`, `LPOP`, `RPOP`, `LRANGE`, `LTRIM`, `RENAME`, `TYPE`, `KEYS`, `INFO`, `PING`, `ECHO`, `QUIT`, `FLUSHDB`, `FLUSHALL`, `HSET`, `HGET`, `HGETALL`, `HDEL`, `HEXISTS`, `HLEN`, `HMGET`, `HKEYS` and `HVALS`.
 
 **Disclaimer:** This is not a production-ready Redis clone and it is not intended for use in production environments (yet).
 
@@ -26,7 +26,7 @@ GoodiesDB aims to mimic the basic functionalities of Redis to provide a learning
 
 - In-memory key-value store
 - Data persistence using RDB and AOF
-- Support for lists, sets, and hash maps (planned)
+- Support for lists and basic hash maps
 - Publish/Subscribe messaging (planned)
 - Basic transaction support
 - Lua scripting execution (planned)

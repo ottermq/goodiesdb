@@ -88,3 +88,22 @@ func aofSet(parts []string, s *store.Store, dbIndex int) {
 		s.Set(dbIndex, parts[2], parts[3])
 	}
 }
+
+func aofHSet(parts []string, s *store.Store, dbIndex int) {
+	if len(parts) < 6 || len(parts)%2 != 0 {
+		return
+	}
+
+	fields := make(map[string]any, len(parts[3:])/2)
+	for i := 3; i < len(parts); i += 2 {
+		fields[parts[i]] = parts[i+1]
+	}
+	_, _ = s.HSet(dbIndex, parts[2], fields)
+}
+
+func aofHDel(parts []string, s *store.Store, dbIndex int) {
+	if len(parts) < 4 {
+		return
+	}
+	_, _ = s.HDel(dbIndex, parts[2], parts[3:]...)
+}

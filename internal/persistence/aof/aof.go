@@ -81,6 +81,12 @@ func RebuildStoreFromAOF(s *store.Store, filename string) error {
 		case "RENAME":
 			aofRename(parts, s, dbIndex)
 
+		case "HSET":
+			aofHSet(parts, s, dbIndex)
+
+		case "HDEL":
+			aofHDel(parts, s, dbIndex)
+
 		default:
 			log.Printf("Unknown command: %s", cmd)
 		}

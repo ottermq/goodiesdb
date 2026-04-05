@@ -54,6 +54,22 @@ Today the server uses this flow:
 
 The old command switch has been retired.
 
+## Compatibility progress
+
+The current branch now includes a first useful slice of Redis hash support aimed at real client flows:
+
+- `HSET`
+- `HGET`
+- `HGETALL`
+- `HDEL`
+- `HEXISTS`
+- `HLEN`
+- `HMGET`
+- `HKEYS`
+- `HVALS`
+
+This moves hashes from "planned" toward "usable for common application state", especially for object and session-style storage.
+
 ## Known issues
 
 ### Historical note: deadlock in store deletion path

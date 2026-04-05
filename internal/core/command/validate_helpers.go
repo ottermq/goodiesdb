@@ -35,3 +35,22 @@ func parseIntArg(value string, errMsg string) (int, error) {
 	}
 	return parsed, nil
 }
+
+func requireFieldValuePairs(args []string) error {
+	if len(args) < 3 || len(args)%2 == 0 {
+		return ErrWrongNumberOfArguments
+	}
+	return nil
+}
+
+func requireKeyWithFields(args []string) error {
+	return requireMinArgs(args, 2)
+}
+
+func hashFieldValueArgs(args []string) map[string]any {
+	fields := make(map[string]any, len(args)/2)
+	for i := 0; i < len(args); i += 2 {
+		fields[args[i]] = args[i+1]
+	}
+	return fields
+}
