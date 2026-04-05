@@ -44,3 +44,5 @@ dump.rdb
 dump.rdb.*
 
 bin/
+
+.codex
