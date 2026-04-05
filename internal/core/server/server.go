@@ -62,7 +62,7 @@ func NewServer(config *Config) *Server {
 // Start starts the server
 func (s *Server) Start() error {
 	logging.Infof("%s", s.asciiLogo())
-	logging.Infof("Starting Redis Clone Server...")
+	logging.Infof("Starting GoodiesDB server...")
 
 	if s.config.UseRDB || s.config.UseAOF {
 		logging.Infof("Found persistence enabled. Recovering data...")
@@ -96,7 +96,7 @@ func (s *Server) Start() error {
 		s.mu.Unlock()
 		_ = ln.Close()
 	}()
-	logging.Infof("Redis Clone Server %s started on %s", s.config.Version, ln.Addr().String())
+	logging.Infof("GoodiesDB %s listening on %s", s.config.Version, ln.Addr().String())
 
 	for {
 		conn, err := ln.Accept()
