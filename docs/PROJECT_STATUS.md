@@ -70,6 +70,16 @@ The current branch now includes a first useful slice of Redis hash support aimed
 
 This moves hashes from "planned" toward "usable for common application state", especially for object and session-style storage.
 
+## Persistence status
+
+AOF persistence now uses RESP-encoded commands instead of the earlier space-split text format.
+
+That fixes lossless replay for values containing spaces and other structured string content, but it is also a deliberate format break:
+
+- current versions replay RESP-based AOF only
+- older line-based `appendonly.aof` files are ignored during recovery
+- when only a legacy AOF is present, GoodiesDB starts with an empty store
+
 ## Known issues
 
 ### Historical note: deadlock in store deletion path

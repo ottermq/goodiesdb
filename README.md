@@ -78,6 +78,12 @@ For project context and contributor guidance, start with:
 - `docs/TESTING.md`
 - `docs/refactoring/COMMAND_REGISTRY_REFACTOR.md`
 
+## Persistence note
+
+GoodiesDB now writes AOF files in RESP format rather than the older line-based space-split format.
+
+Older `appendonly.aof` files from the legacy format are not replayed by current versions. If such a file is present, GoodiesDB starts with an empty store instead of attempting a best-effort import.
+
 ## License
 
 This project is licensed under the MIT License.

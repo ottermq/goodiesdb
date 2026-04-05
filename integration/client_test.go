@@ -802,6 +802,64 @@ func TestHashCommandsReturnWrongTypeForNonHashKeys(t *testing.T) {
 	}
 }
 
+func TestAOFRestartPreservesValuesWithSpaces(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cfg := server.NewConfig()
+	cfg.Host = "127.0.0.1"
+	cfg.Port = "0"
+	cfg.UseAOF = true
+	cfg.UseRDB = false
+	cfg.DataDir = t.TempDir()
+	cfg.Version = "test"
+
+	srv, errCh, addr := startServerWithConfig(t, cfg)
+	client := newRedisClient(t, addr, 0)
+
+	if err := client.Set(ctx, "greeting", "hello world", 0).Err(); err != nil {
+		t.Fatalf("SET failed: %v", err)
+	}
+	if err := client.RPush(ctx, "people", "Andre Cunha", "Maria Clara").Err(); err != nil {
+		t.Fatalf("RPUSH failed: %v", err)
+	}
+	if err := client.HSet(ctx, "profile", "display_name", "Andre Cunha", "bio", "{\"summary\":\"hello world\"}").Err(); err != nil {
+		t.Fatalf("HSET failed: %v", err)
+	}
+
+	stopServer(t, srv, errCh)
+
+	srv, errCh, addr = startServerWithConfig(t, cfg)
+	client = newRedisClient(t, addr, 0)
+
+	greeting, err := client.Get(ctx, "greeting").Result()
+	if err != nil {
+		t.Fatalf("GET after restart failed: %v", err)
+	}
+	if greeting != "hello world" {
+		t.Fatalf("expected greeting to survive restart, got %q", greeting)
+	}
+
+	people, err := client.LRange(ctx, "people", 0, -1).Result()
+	if err != nil {
+		t.Fatalf("LRANGE after restart failed: %v", err)
+	}
+	expectedPeople := []string{"Andre Cunha", "Maria Clara"}
+	if strings.Join(people, ",") != strings.Join(expectedPeople, ",") {
+		t.Fatalf("expected people list %v after restart, got %v", expectedPeople, people)
+	}
+
+	displayName, err := client.HGet(ctx, "profile", "display_name").Result()
+	if err != nil {
+		t.Fatalf("HGET after restart failed: %v", err)
+	}
+	if displayName != "Andre Cunha" {
+		t.Fatalf("expected hash field to survive restart, got %q", displayName)
+	}
+
+	stopServer(t, srv, errCh)
+}
+
 func startTestServer(t *testing.T) string {
 	t.Helper()
 
@@ -813,6 +871,13 @@ func startTestServer(t *testing.T) string {
 	cfg.DataDir = t.TempDir()
 	cfg.Version = "test"
 
+	srv, errCh, addr := startServerWithConfig(t, cfg)
+	return registerServerCleanup(t, srv, errCh, addr)
+}
+
+func startServerWithConfig(t *testing.T, cfg *server.Config) (*server.Server, <-chan error, string) {
+	t.Helper()
+
 	srv := server.NewServer(cfg)
 	errCh := make(chan error, 1)
 
@@ -823,7 +888,7 @@ func startTestServer(t *testing.T) string {
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		if addr := srv.Addr(); addr != "" {
-			return registerServerCleanup(t, srv, errCh, addr)
+			return srv, errCh, addr
 		}
 
 		select {
@@ -836,7 +901,21 @@ func startTestServer(t *testing.T) string {
 	}
 
 	t.Fatalf("server did not become ready within %s", 2*time.Second)
-	return ""
+	return nil, nil, ""
+}
+
+func stopServer(t *testing.T, srv *server.Server, errCh <-chan error) {
+	t.Helper()
+
+	srv.Shutdown()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatalf("server shutdown returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatalf("timed out waiting for server shutdown")
+	}
 }
 
 func registerServerCleanup(t *testing.T, srv *server.Server, errCh <-chan error, addr string) string {

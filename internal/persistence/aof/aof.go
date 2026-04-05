@@ -2,26 +2,34 @@ package aof
 
 import (
 	"bufio"
+	"errors"
+	"io"
 	"log"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/andrelcunha/goodiesdb/internal/core/store"
+	"github.com/andrelcunha/goodiesdb/internal/protocol"
+	"github.com/andrelcunha/goodiesdb/internal/protocol/resp2"
 )
 
 // AOFWriter writes commands to a file
-func AOFWriter(aofChan chan string, filename string) {
+func AOFWriter(aofChan chan store.AOFCommand, filename string) {
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("Failed to open AOF file: %v", err)
 	}
 	defer file.Close()
 
+	writer := bufio.NewWriter(file)
+	proto := &resp2.RESP2Protocol{}
+
 	for cmd := range aofChan {
-		_, err := file.WriteString(cmd + "\n")
-		if err != nil {
+		if err := proto.Encode(writer, toRESPArray(cmd)); err != nil {
 			log.Fatalf("Failed to write to AOF file: %v", err)
+		}
+		if err := writer.Flush(); err != nil {
+			log.Fatalf("Failed to flush AOF file: %v", err)
 		}
 	}
 }
@@ -34,63 +42,120 @@ func RebuildStoreFromAOF(s *store.Store, filename string) error {
 	}
 	defer file.Close()
 
-	// Create scanner to read the AOF file
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		cmd := scanner.Text()
-		parts := strings.Split(cmd, " ")
-		if len(parts) == 0 {
-			continue
+	reader := bufio.NewReader(file)
+	peek, err := reader.Peek(1)
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil
 		}
+		return err
+	}
+	if peek[0] != '*' {
+		log.Printf("Legacy line-based AOF detected in %s; ignoring file and starting with an empty store", filename)
+		return nil
+	}
 
-		dbIndex, err := strconv.Atoi(parts[1])
+	proto := &resp2.RESP2Protocol{}
+	for {
+		value, err := proto.Parse(reader)
 		if err != nil {
-			log.Printf("Invalid database index: %s", parts[1])
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+
+		parts, ok := respArrayToCommand(value)
+		if !ok || len(parts) == 0 {
 			continue
 		}
 
-		switch parts[0] {
+		dispatchAOF(parts, s)
+	}
+}
 
-		case "SET":
-			aofSet(parts, s, dbIndex)
+func toRESPArray(cmd store.AOFCommand) protocol.Array {
+	arr := make(protocol.Array, len(cmd))
+	for i, part := range cmd {
+		arr[i] = protocol.BulkString([]byte(part))
+	}
+	return arr
+}
 
-		case "DEL":
-			aofDel(parts, s, dbIndex)
+func respArrayToCommand(value protocol.RESPValue) ([]string, bool) {
+	arr, ok := value.(protocol.Array)
+	if !ok {
+		return nil, false
+	}
 
-		case "SETNX":
-			aofSetNX(parts, s, dbIndex)
-
-		case "EXPIRE":
-			aofExpire(parts, s, dbIndex)
-
-		case "LPUSH":
-			aofLPush(parts, s, dbIndex)
-
-		case "RPUSH":
-			aofRPush(parts, s, dbIndex)
-
-		case "LPOP":
-			aofLPop(parts, s, dbIndex)
-
-		case "RPOP":
-			aofRpop(parts, s, dbIndex)
-
-		case "LTRIM":
-			aofLTrim(parts, s, dbIndex)
-
-		case "RENAME":
-			aofRename(parts, s, dbIndex)
-
-		case "HSET":
-			aofHSet(parts, s, dbIndex)
-
-		case "HDEL":
-			aofHDel(parts, s, dbIndex)
-
+	parts := make([]string, len(arr))
+	for i, part := range arr {
+		switch v := part.(type) {
+		case protocol.BulkString:
+			parts[i] = string(v)
+		case protocol.SimpleString:
+			parts[i] = string(v)
 		default:
-			log.Printf("Unknown command: %s", cmd)
+			return nil, false
 		}
 	}
 
-	return scanner.Err()
+	return parts, true
+}
+
+func dispatchAOF(parts []string, s *store.Store) {
+	cmdName := parts[0]
+	dbIndex, ok := parseDBIndex(parts)
+	if !ok && cmdName != "FLUSHALL" {
+		log.Printf("Invalid AOF command database index for %q", cmdName)
+		return
+	}
+
+	switch cmdName {
+	case "SET":
+		aofSet(parts, s, dbIndex)
+	case "DEL":
+		aofDel(parts, s, dbIndex)
+	case "SETNX":
+		aofSetNX(parts, s, dbIndex)
+	case "EXPIRE":
+		aofExpire(parts, s, dbIndex)
+	case "INCR":
+		aofIncr(parts, s, dbIndex)
+	case "DECR":
+		aofDecr(parts, s, dbIndex)
+	case "LPUSH":
+		aofLPush(parts, s, dbIndex)
+	case "RPUSH":
+		aofRPush(parts, s, dbIndex)
+	case "LPOP":
+		aofLPop(parts, s, dbIndex)
+	case "RPOP":
+		aofRpop(parts, s, dbIndex)
+	case "LTRIM":
+		aofLTrim(parts, s, dbIndex)
+	case "RENAME":
+		aofRename(parts, s, dbIndex)
+	case "FLUSHDB":
+		aofFlushDB(parts, s, dbIndex)
+	case "FLUSHALL":
+		aofFlushAll(parts, s)
+	case "HSET":
+		aofHSet(parts, s, dbIndex)
+	case "HDEL":
+		aofHDel(parts, s, dbIndex)
+	default:
+		log.Printf("Unknown AOF command: %v", parts)
+	}
+}
+
+func parseDBIndex(parts []string) (int, bool) {
+	if len(parts) < 2 {
+		return 0, false
+	}
+	dbIndex, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, false
+	}
+	return dbIndex, true
 }

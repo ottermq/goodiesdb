@@ -43,7 +43,7 @@ func NewServer(config *Config) *Server {
 	}
 	protocol := &resp2.RESP2Protocol{}
 
-	aofChan := make(chan string, 100)
+	aofChan := make(chan store.AOFCommand, 100)
 	s := store.NewStore(aofChan)
 	server := &Server{
 		store:                    s,

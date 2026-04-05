@@ -2,7 +2,7 @@ package store
 
 import (
 	"fmt"
-	"strings"
+	"sort"
 )
 
 func (s *Store) HSet(dbIndex int, key string, fields map[string]any) (int, error) {
@@ -40,7 +40,7 @@ func (s *Store) HSet(dbIndex int, key string, fields map[string]any) (int, error
 		hash[field] = fmt.Sprintf("%v", rawValue)
 	}
 
-	s.aofChan <- fmt.Sprintf("HSET %d %s %s", dbIndex, key, flattenHashFieldPairs(fields))
+	s.appendAOF("HSET", append([]string{dbIndexArg(dbIndex), key}, flattenHashFieldPairs(fields)...)...)
 	return added, nil
 }
 
@@ -114,7 +114,7 @@ func (s *Store) HDel(dbIndex int, key string, fields ...string) (int, error) {
 	}
 
 	if deleted > 0 {
-		s.aofChan <- fmt.Sprintf("HDEL %d %s %s", dbIndex, key, strings.Join(fields, " "))
+		s.appendAOF("HDEL", append([]string{dbIndexArg(dbIndex), key}, fields...)...)
 	}
 
 	return deleted, nil
@@ -203,10 +203,16 @@ func (s *Store) HVals(dbIndex int, key string) ([]string, error) {
 	return values, nil
 }
 
-func flattenHashFieldPairs(fields map[string]any) string {
-	parts := make([]string, 0, len(fields)*2)
-	for field, rawValue := range fields {
-		parts = append(parts, field, fmt.Sprintf("%v", rawValue))
+func flattenHashFieldPairs(fields map[string]any) []string {
+	keys := make([]string, 0, len(fields))
+	for field := range fields {
+		keys = append(keys, field)
 	}
-	return strings.Join(parts, " ")
+	sort.Strings(keys)
+
+	parts := make([]string, 0, len(fields)*2)
+	for _, field := range keys {
+		parts = append(parts, field, fmt.Sprintf("%v", fields[field]))
+	}
+	return parts
 }

@@ -10,7 +10,7 @@ import (
 )
 
 func TestStore(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 
 	s := NewStore(aofChan)
 	s.Set(0, "Key1", "Value1")
@@ -31,7 +31,7 @@ func TestStore(t *testing.T) {
 }
 
 func TestExists(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 
 	s := NewStore(aofChan)
 	s.Set(0, "Key1", "Value1")
@@ -44,7 +44,7 @@ func TestExists(t *testing.T) {
 }
 
 func TestSetNX(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 
 	s := NewStore(aofChan)
 	if s.SetNX(0, "Key1", "Value1") == 0 {
@@ -61,7 +61,7 @@ func TestSetNX(t *testing.T) {
 }
 
 func TestExpire(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 
 	s := NewStore(aofChan)
 	s.Set(0, "Key1", "Value1")
@@ -76,7 +76,7 @@ func TestExpire(t *testing.T) {
 }
 
 func TestIncr(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	newValue, err := s.Incr(0, "counter")
@@ -99,7 +99,7 @@ func TestIncr(t *testing.T) {
 }
 
 func TesDecr(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	newValue, err := s.Decr(0, "counter")
@@ -123,7 +123,7 @@ func TesDecr(t *testing.T) {
 
 // test Ttl
 func TestTtl(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	s.Set(0, "Key1", "Value1")
@@ -173,7 +173,7 @@ func TestTtl(t *testing.T) {
 
 // test LPush
 func TestLPush(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	//test if the response is correct
@@ -202,7 +202,7 @@ func TestLPush(t *testing.T) {
 
 // test RPush
 func TestRPush(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	//test if the response is correct
@@ -225,7 +225,7 @@ func TestRPush(t *testing.T) {
 }
 
 func TestHashOperations(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	added, err := s.HSet(0, "profile", map[string]any{
@@ -294,7 +294,7 @@ func TestHashOperations(t *testing.T) {
 }
 
 func TestHashOperationsWrongType(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	if _, err := s.Set(0, "plain:string", "value"); err != nil {
@@ -312,7 +312,7 @@ func TestHashOperationsWrongType(t *testing.T) {
 
 // test LPop
 func TestLPop(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	//test if LPop returns nil when key does not exist
@@ -366,7 +366,7 @@ func TestLPop(t *testing.T) {
 
 // test RPop
 func TestRPop(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	//test if RPop returns nil when key does not exist
@@ -428,7 +428,7 @@ func TestRPop(t *testing.T) {
 
 // test LRange
 func TestLRange(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	s.LPush(0, "list", "value1", "value2", "value3", "value4")
@@ -466,7 +466,7 @@ func TestLRange(t *testing.T) {
 
 // Test Rename
 func TestRename(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	// test if Rename returns nil when key does not exist
@@ -511,7 +511,7 @@ func TestRename(t *testing.T) {
 
 // Test Type
 func TestType(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 	dbIndex := 0
 
@@ -558,7 +558,7 @@ func TestType(t *testing.T) {
 
 // Test Keys
 func TestKeys(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 	indexDb := 0
 

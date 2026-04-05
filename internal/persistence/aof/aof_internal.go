@@ -71,6 +71,18 @@ func aofExpire(parts []string, s *store.Store, dbIndex int) {
 	}
 }
 
+func aofIncr(parts []string, s *store.Store, dbIndex int) {
+	if len(parts) == 3 {
+		_, _ = s.Incr(dbIndex, parts[2])
+	}
+}
+
+func aofDecr(parts []string, s *store.Store, dbIndex int) {
+	if len(parts) == 3 {
+		_, _ = s.Decr(dbIndex, parts[2])
+	}
+}
+
 func aofSetNX(parts []string, s *store.Store, dbIndex int) {
 	if len(parts) == 4 {
 		s.SetNX(dbIndex, parts[2], parts[3])
@@ -90,7 +102,7 @@ func aofSet(parts []string, s *store.Store, dbIndex int) {
 }
 
 func aofHSet(parts []string, s *store.Store, dbIndex int) {
-	if len(parts) < 6 || len(parts)%2 != 0 {
+	if len(parts) < 5 || (len(parts)-3)%2 != 0 {
 		return
 	}
 
@@ -106,4 +118,16 @@ func aofHDel(parts []string, s *store.Store, dbIndex int) {
 		return
 	}
 	_, _ = s.HDel(dbIndex, parts[2], parts[3:]...)
+}
+
+func aofFlushDB(parts []string, s *store.Store, dbIndex int) {
+	if len(parts) == 2 {
+		s.FlushDb(dbIndex)
+	}
+}
+
+func aofFlushAll(parts []string, s *store.Store) {
+	if len(parts) == 1 {
+		s.FlushAll()
+	}
 }
