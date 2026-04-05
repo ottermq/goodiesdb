@@ -64,6 +64,14 @@ Run the GoodiesDb server:
 make run
 ```
 
+Control log verbosity with `LOG_LEVEL`:
+
+```bash
+LOG_LEVEL=debug make run
+```
+
+Supported values are `error`, `info`, and `debug`. The default is `info`.
+
 You can then interact with the server using PuTTY on raw TCP port 6379.
 
 ## Documentation

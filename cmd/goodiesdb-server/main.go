@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/andrelcunha/goodiesdb/internal/core/server"
+	"github.com/andrelcunha/goodiesdb/internal/logging"
 	"github.com/joho/godotenv"
 )
 
@@ -35,6 +36,10 @@ func main() {
 	config := server.NewConfig()
 	config.Version = version
 	config.LoadFromEnv()
+	if err := logging.SetLevel(config.LogLevel); err != nil {
+		fmt.Printf("Invalid LOG_LEVEL %q, defaulting to info.\n", config.LogLevel)
+		_ = logging.SetLevel("info")
+	}
 
 	// Initialize Server
 	srv := server.NewServer(config)

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/andrelcunha/goodiesdb/internal/logging"
 	"github.com/andrelcunha/goodiesdb/internal/persistence/aof"
 	"github.com/andrelcunha/goodiesdb/internal/persistence/rdb"
 )
@@ -106,9 +107,9 @@ func (s *Server) startRDB() {
 		select {
 		case <-time.After(1 * time.Minute):
 			if err := rdb.SaveSnapshot(s.store, rdbFilepath); err != nil {
-				fmt.Println("Error saving snapshot:", err)
+				logging.Errorf("Error saving snapshot: %v", err)
 			} else {
-				fmt.Println("Snapshot saved successfully")
+				logging.Infof("Snapshot saved successfully")
 			}
 
 		case <-s.shutdownChan:
@@ -123,7 +124,7 @@ func (s *Server) recoverStore() {
 	flagOk := false
 	if s.config.UseRDB {
 		if err := rdb.LoadSnapshot(s.store, rdbFilepath); err != nil {
-			fmt.Println("No snapshot found.")
+			logging.Infof("No snapshot found.")
 		} else {
 			flagOk = true
 		}
@@ -131,14 +132,14 @@ func (s *Server) recoverStore() {
 
 	if s.config.UseAOF && !flagOk {
 		if err := aof.RebuildStoreFromAOF(s.store, aofFilepath); err != nil {
-			fmt.Println("Error loading from AOF:", err)
+			logging.Errorf("Error loading from AOF: %v", err)
 
 		} else {
 			flagOk = true
 		}
 	}
 	if !flagOk {
-		fmt.Println("None of the recovery files are healthy. Starting with an empty store.")
+		logging.Infof("None of the recovery files are healthy. Starting with an empty store.")
 	}
 }
 

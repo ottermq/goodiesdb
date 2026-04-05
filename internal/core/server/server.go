@@ -13,6 +13,7 @@ import (
 
 	"github.com/andrelcunha/goodiesdb/internal/core/command"
 	"github.com/andrelcunha/goodiesdb/internal/core/store"
+	"github.com/andrelcunha/goodiesdb/internal/logging"
 	"github.com/andrelcunha/goodiesdb/internal/persistence/aof"
 	"github.com/andrelcunha/goodiesdb/internal/persistence/rdb"
 	"github.com/andrelcunha/goodiesdb/internal/protocol"
@@ -60,24 +61,24 @@ func NewServer(config *Config) *Server {
 
 // Start starts the server
 func (s *Server) Start() error {
-	fmt.Println(s.asciiLogo())
-	fmt.Println("Starting Redis Clone Server...")
+	logging.Infof("%s", s.asciiLogo())
+	logging.Infof("Starting Redis Clone Server...")
 
 	if s.config.UseRDB || s.config.UseAOF {
-		fmt.Println("Found persistence enabled. Recovering data...")
+		logging.Infof("Found persistence enabled. Recovering data...")
 		s.recoverStore()
 	} else {
-		fmt.Println("No persistence enabled. Data will not be persisted.")
+		logging.Infof("No persistence enabled. Data will not be persisted.")
 	}
 
 	if s.config.UseRDB {
 		go s.startRDB()
-		fmt.Println("RDB persistence enabled")
+		logging.Infof("RDB persistence enabled")
 	}
 	if s.config.UseAOF {
 		aofFilepath := filepath.Join(s.dataDir, "appendonly.aof")
 		go aof.AOFWriter(s.store.AOFChannel(), aofFilepath)
-		fmt.Println("AOF persistence enabled")
+		logging.Infof("AOF persistence enabled")
 	}
 
 	// set addr string (host and port) using config
@@ -95,7 +96,7 @@ func (s *Server) Start() error {
 		s.mu.Unlock()
 		_ = ln.Close()
 	}()
-	fmt.Printf("Redis Clone Server %s started on %s\n", s.config.Version, ln.Addr().String())
+	logging.Infof("Redis Clone Server %s started on %s", s.config.Version, ln.Addr().String())
 
 	for {
 		conn, err := ln.Accept()
@@ -103,7 +104,7 @@ func (s *Server) Start() error {
 			if errors.Is(err, net.ErrClosed) {
 				return nil
 			}
-			fmt.Println("Error accepting connection:", err)
+			logging.Errorf("Error accepting connection: %v", err)
 			continue
 		}
 		go s.handleConn(conn)
@@ -171,13 +172,12 @@ func (s *Server) executeCommand(conn net.Conn, request protocol.RESPValue) (prot
 
 	cmdName := strings.ToUpper(parts[0])
 	args := parts[1:]
-	fmt.Printf("Executing command: %s %v\n", cmdName, args)
+	logging.Debugf("Executing command: %s %v", cmdName, args)
 	dbIndex := s.getCurrentDb(conn)
 	/* Using registered commands*/
 
 	cmd, ok := s.commandRegistry.Get(cmdName)
 	if ok {
-		fmt.Printf("invoking %s", cmd.Name())
 		return s.invokeCommand(cmd, args, conn, dbIndex)
 	}
 	return protocol.ErrorString("ERR unknown command '" + parts[0] + "'"), nil

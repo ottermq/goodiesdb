@@ -10,6 +10,7 @@ type Config struct {
 	UseAOF   bool
 	Version  string
 	DataDir  string
+	LogLevel string
 }
 
 func NewConfig() *Config {
@@ -19,6 +20,7 @@ func NewConfig() *Config {
 		UseRDB:   true,
 		UseAOF:   true,
 		DataDir:  "data",
+		LogLevel: "info",
 	}
 }
 
@@ -41,5 +43,8 @@ func (c *Config) LoadFromEnv() {
 	}
 	if dataDir := os.Getenv("DATA_DIR"); dataDir != "" {
 		c.DataDir = dataDir
+	}
+	if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" {
+		c.LogLevel = logLevel
 	}
 }
