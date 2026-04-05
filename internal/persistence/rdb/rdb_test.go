@@ -65,3 +65,40 @@ func TestSaveLoadSnapshot(t *testing.T) {
 	os.Remove(aofFilename)
 
 }
+
+func TestSaveLoadSnapshotWithHash(t *testing.T) {
+	aofFilename := "test_hash_appendonly.aof"
+	aofChan := make(chan store.AOFCommand, 100)
+
+	go aof.AOFWriter(aofChan, aofFilename)
+
+	s := store.NewStore(aofChan)
+	if _, err := s.HSet(0, "profile", map[string]any{
+		"name": "andre",
+		"role": "admin",
+	}); err != nil {
+		t.Fatalf("HSet failed: %v", err)
+	}
+
+	if err := SaveSnapshot(s, "test_hash_snapshot.gob"); err != nil {
+		t.Fatalf("Failed to save snapshot with hash: %v", err)
+	}
+
+	newStore := store.NewStore(aofChan)
+	if err := LoadSnapshot(newStore, "test_hash_snapshot.gob"); err != nil {
+		t.Fatalf("Failed to load snapshot with hash: %v", err)
+	}
+
+	hash, err := newStore.HGetAll(0, "profile")
+	if err != nil {
+		t.Fatalf("HGetAll failed after load: %v", err)
+	}
+	if hash["name"] != "andre" || hash["role"] != "admin" {
+		t.Fatalf("unexpected hash after load: %#v", hash)
+	}
+
+	if err := os.Remove("test_hash_snapshot.gob"); err != nil {
+		t.Fatalf("failed to remove hash snapshot: %v", err)
+	}
+	_ = os.Remove(aofFilename)
+}
