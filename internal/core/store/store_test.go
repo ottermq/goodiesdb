@@ -1,6 +1,8 @@
 package store
 
 import (
+	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -8,7 +10,7 @@ import (
 )
 
 func TestStore(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 
 	s := NewStore(aofChan)
 	s.Set(0, "Key1", "Value1")
@@ -29,7 +31,7 @@ func TestStore(t *testing.T) {
 }
 
 func TestExists(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 
 	s := NewStore(aofChan)
 	s.Set(0, "Key1", "Value1")
@@ -42,7 +44,7 @@ func TestExists(t *testing.T) {
 }
 
 func TestSetNX(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 
 	s := NewStore(aofChan)
 	if s.SetNX(0, "Key1", "Value1") == 0 {
@@ -59,7 +61,7 @@ func TestSetNX(t *testing.T) {
 }
 
 func TestExpire(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 
 	s := NewStore(aofChan)
 	s.Set(0, "Key1", "Value1")
@@ -74,7 +76,7 @@ func TestExpire(t *testing.T) {
 }
 
 func TestIncr(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	newValue, err := s.Incr(0, "counter")
@@ -97,7 +99,7 @@ func TestIncr(t *testing.T) {
 }
 
 func TesDecr(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	newValue, err := s.Decr(0, "counter")
@@ -121,7 +123,7 @@ func TesDecr(t *testing.T) {
 
 // test Ttl
 func TestTtl(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	s.Set(0, "Key1", "Value1")
@@ -171,7 +173,7 @@ func TestTtl(t *testing.T) {
 
 // test LPush
 func TestLPush(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	//test if the response is correct
@@ -200,7 +202,7 @@ func TestLPush(t *testing.T) {
 
 // test RPush
 func TestRPush(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	//test if the response is correct
@@ -222,9 +224,95 @@ func TestRPush(t *testing.T) {
 	}
 }
 
+func TestHashOperations(t *testing.T) {
+	aofChan := make(chan AOFCommand, 100)
+	s := NewStore(aofChan)
+
+	added, err := s.HSet(0, "profile", map[string]any{
+		"user_id":  "1",
+		"username": "andre",
+	})
+	if err != nil {
+		t.Fatalf("HSet failed: %v", err)
+	}
+	if added != 2 {
+		t.Fatalf("expected HSet to add 2 fields, got %d", added)
+	}
+
+	added, err = s.HSet(0, "profile", map[string]any{
+		"username": "andre-updated",
+		"email":    "andre@example.com",
+	})
+	if err != nil {
+		t.Fatalf("second HSet failed: %v", err)
+	}
+	if added != 1 {
+		t.Fatalf("expected second HSet to add 1 field, got %d", added)
+	}
+
+	value, ok, err := s.HGet(0, "profile", "username")
+	if err != nil {
+		t.Fatalf("HGet failed: %v", err)
+	}
+	if !ok || value != "andre-updated" {
+		t.Fatalf("expected updated username, got ok=%v value=%q", ok, value)
+	}
+
+	values, err := s.HMGet(0, "profile", "user_id", "missing", "email")
+	if err != nil {
+		t.Fatalf("HMGet failed: %v", err)
+	}
+	if len(values) != 3 || values[0] != "1" || values[1] != nil || values[2] != "andre@example.com" {
+		t.Fatalf("unexpected HMGet result: %v", values)
+	}
+
+	keys, err := s.HKeys(0, "profile")
+	if err != nil {
+		t.Fatalf("HKeys failed: %v", err)
+	}
+	sort.Strings(keys)
+	expectedKeys := []string{"email", "user_id", "username"}
+	if !slice.Equal(keys, expectedKeys) {
+		t.Fatalf("expected HKeys %v, got %v", expectedKeys, keys)
+	}
+
+	deleted, err := s.HDel(0, "profile", "email", "missing")
+	if err != nil {
+		t.Fatalf("HDel failed: %v", err)
+	}
+	if deleted != 1 {
+		t.Fatalf("expected HDel to delete 1 field, got %d", deleted)
+	}
+
+	length, err := s.HLen(0, "profile")
+	if err != nil {
+		t.Fatalf("HLen failed: %v", err)
+	}
+	if length != 2 {
+		t.Fatalf("expected HLen 2, got %d", length)
+	}
+}
+
+func TestHashOperationsWrongType(t *testing.T) {
+	aofChan := make(chan AOFCommand, 100)
+	s := NewStore(aofChan)
+
+	if _, err := s.Set(0, "plain:string", "value"); err != nil {
+		t.Fatalf("Set failed: %v", err)
+	}
+
+	if _, err := s.HSet(0, "plain:string", map[string]any{"field": "value"}); !errors.Is(err, ErrWrongType) {
+		t.Fatalf("expected ErrWrongType from HSet, got %v", err)
+	}
+
+	if _, _, err := s.HGet(0, "plain:string", "field"); !errors.Is(err, ErrWrongType) {
+		t.Fatalf("expected ErrWrongType from HGet, got %v", err)
+	}
+}
+
 // test LPop
 func TestLPop(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	//test if LPop returns nil when key does not exist
@@ -278,7 +366,7 @@ func TestLPop(t *testing.T) {
 
 // test RPop
 func TestRPop(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	//test if RPop returns nil when key does not exist
@@ -340,7 +428,7 @@ func TestRPop(t *testing.T) {
 
 // test LRange
 func TestLRange(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	s.LPush(0, "list", "value1", "value2", "value3", "value4")
@@ -378,7 +466,7 @@ func TestLRange(t *testing.T) {
 
 // Test Rename
 func TestRename(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 
 	// test if Rename returns nil when key does not exist
@@ -423,7 +511,7 @@ func TestRename(t *testing.T) {
 
 // Test Type
 func TestType(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 	dbIndex := 0
 
@@ -470,7 +558,7 @@ func TestType(t *testing.T) {
 
 // Test Keys
 func TestKeys(t *testing.T) {
-	aofChan := make(chan string, 100)
+	aofChan := make(chan AOFCommand, 100)
 	s := NewStore(aofChan)
 	indexDb := 0
 

@@ -79,6 +79,11 @@ These commands are relatively self-contained and should help prove the pattern.
 - verify persistence with more command types
 - define expected precedence and recovery behavior more explicitly
 
+Recent progress:
+
+- AOF now uses RESP-encoded commands for lossless replay of values containing spaces
+- replay coverage should keep expanding alongside each persisted mutating command
+
 ## Longer term
 
 ### 8. Expand useful data structures carefully

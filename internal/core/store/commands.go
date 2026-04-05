@@ -23,7 +23,7 @@ func (s *Store) Set(dbIndex int, key string, rawValue any, args ...string) (bool
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	// write to AOF before setting the value (WAL)
-	s.aofChan <- fmt.Sprintf("SET %d %s %v", dbIndex, key, rawValue)
+	s.appendAOF("SET", dbIndexArg(dbIndex), key, fmt.Sprintf("%v", rawValue))
 	var value *Value
 	switch v := rawValue.(type) {
 	case string:

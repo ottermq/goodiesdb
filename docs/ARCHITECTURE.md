@@ -44,7 +44,7 @@ This layer is now the primary command-dispatch mechanism.
 
 ### Persistence
 
-`internal/persistence/aof/` appends write commands to disk and can replay them.
+`internal/persistence/aof/` appends write commands to disk as RESP arrays and can replay them losslessly.
 
 `internal/persistence/rdb/` saves and restores snapshots of store state.
 
@@ -53,6 +53,7 @@ This layer is now the primary command-dispatch mechanism.
 - The store currently supports 16 logical databases.
 - Database selection is per connection.
 - Persistence is optional and configured through server config.
+- AOF recovery only supports the current RESP-based format; legacy line-based AOF files are ignored.
 - Command dispatch is now registry-based rather than switch-based.
 - Nil reply encoding is handled at the command/server layer, not inside the store.
 

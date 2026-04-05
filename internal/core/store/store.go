@@ -17,11 +17,11 @@ var ErrNoSuchKey = fmt.Errorf("no such key")
 type Store struct {
 	data    []map[string]*Value
 	mu      sync.RWMutex
-	aofChan chan string
+	aofChan chan AOFCommand
 }
 
 // NewStore creates a new store
-func NewStore(aofChan chan string) *Store {
+func NewStore(aofChan chan AOFCommand) *Store {
 	data := make([]map[string]*Value, 16)
 	for i := range data {
 		data[i] = make(map[string]*Value)
@@ -104,7 +104,7 @@ func (s *Store) SetRawValue(dbIndex int, key string, value interface{}) {
 	s.data[dbIndex][key] = data
 }
 
-func (s *Store) AOFChannel() chan string {
+func (s *Store) AOFChannel() chan AOFCommand {
 	return s.aofChan
 }
 
@@ -145,7 +145,7 @@ func (s *Store) Del(dbIndex int, key string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.delKey(dbIndex, key)
-	s.aofChan <- fmt.Sprintf("DEL %d %s", dbIndex, key)
+	s.appendAOF("DEL", dbIndexArg(dbIndex), key)
 }
 
 // Exists checks if a key exists
@@ -200,7 +200,7 @@ func (s *Store) Expire(dbIndex int, key string, ttl time.Duration) bool {
 		expiration := time.Now().Add(ttl)
 		value.ExpiresAt = &expiration
 		s.data[dbIndex][key] = value
-		s.aofChan <- fmt.Sprintf("EXPIRE %d %s %d", dbIndex, key, int(ttl.Seconds()))
+		s.appendAOF("EXPIRE", dbIndexArg(dbIndex), key, strconv.Itoa(int(ttl.Seconds())))
 		return true
 	}
 	return false
@@ -226,7 +226,7 @@ func (s *Store) Incr(dbIndex int, key string) (int, error) {
 	intValue++
 	value.Data = strconv.Itoa(intValue)
 	s.data[dbIndex][key] = value
-	s.aofChan <- fmt.Sprintf("INCR %d %s", dbIndex, key)
+	s.appendAOF("INCR", dbIndexArg(dbIndex), key)
 	return intValue, nil
 }
 
@@ -250,7 +250,7 @@ func (s *Store) Decr(dbIndex int, key string) (int, error) {
 	intValue--
 	value.Data = strconv.Itoa(intValue)
 	s.data[dbIndex][key] = value
-	s.aofChan <- fmt.Sprintf("DECR %d %s", dbIndex, key)
+	s.appendAOF("DECR", dbIndexArg(dbIndex), key)
 	return intValue, nil
 }
 
@@ -275,7 +275,7 @@ func (s *Store) LPush(dbIndex int, key string, values ...any) int {
 	for i, v := range values {
 		strValues[i] = fmt.Sprintf("%v", v)
 	}
-	s.aofChan <- fmt.Sprintf("LPUSH %d %s %s", dbIndex, key, strings.Join(strValues, " "))
+	s.appendAOF("LPUSH", append([]string{dbIndexArg(dbIndex), key}, strValues...)...)
 	if len(values) > 1 {
 		slice.Reverse(values)
 	}
@@ -300,7 +300,7 @@ func (s *Store) RPush(dbIndex int, key string, values ...any) int {
 	for i, v := range values {
 		strValues[i] = fmt.Sprintf("%v", v)
 	}
-	s.aofChan <- fmt.Sprintf("RPUSH %d %s %s", dbIndex, key, strings.Join(strValues, " "))
+	s.appendAOF("RPUSH", append([]string{dbIndexArg(dbIndex), key}, strValues...)...)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -359,7 +359,7 @@ func (s *Store) LPop(dbIndex int, key string, pcount *int) (interface{}, error) 
 	s.data[dbIndex][key] = value
 
 	// Log the operation
-	s.aofChan <- fmt.Sprintf("LPOP %d %s %d", dbIndex, key, count)
+	s.appendAOF("LPOP", dbIndexArg(dbIndex), key, strconv.Itoa(count))
 
 	if count == 1 && pcount == nil {
 		return popped[0], nil
@@ -411,7 +411,7 @@ func (s *Store) RPop(dbIndex int, key string, pcount *int) (interface{}, error) 
 		s.data[dbIndex][key] = value
 
 		// Log the operation
-		s.aofChan <- fmt.Sprintf("RPOP %d %s %d", dbIndex, key, count)
+		s.appendAOF("RPOP", dbIndexArg(dbIndex), key, strconv.Itoa(count))
 
 		if count == 1 && pcount == nil {
 			return popped[0], nil
@@ -507,7 +507,7 @@ func (s *Store) LTrim(dbIndex int, key string, start, stop int) error {
 	s.data[dbIndex][key] = value
 
 	// Log the operation
-	s.aofChan <- fmt.Sprintf("LTRIM %d %s %d %d", dbIndex, key, start, stop)
+	s.appendAOF("LTRIM", dbIndexArg(dbIndex), key, strconv.Itoa(start), strconv.Itoa(stop))
 
 	return nil
 }
@@ -535,7 +535,7 @@ func (s *Store) Rename(dbIndex int, oldKey, newKey string) error {
 	s.delKey(dbIndex, oldKey)
 
 	// Log the operation
-	s.aofChan <- fmt.Sprintf("RENAME %d %s %s", dbIndex, oldKey, newKey)
+	s.appendAOF("RENAME", dbIndexArg(dbIndex), oldKey, newKey)
 
 	return nil
 }
@@ -588,7 +588,7 @@ func (s *Store) FlushDb(dbIndex int) string {
 	defer s.mu.Unlock()
 
 	s.flushDb(dbIndex)
-	s.aofChan <- fmt.Sprintf("FLUSHDB %d", dbIndex)
+	s.appendAOF("FLUSHDB", dbIndexArg(dbIndex))
 	return "OK"
 }
 
@@ -599,7 +599,7 @@ func (s *Store) FlushAll() string {
 	for dbIndex := range s.data {
 		s.flushDb(dbIndex)
 	}
-	s.aofChan <- "FLUSHALL"
+	s.appendAOF("FLUSHALL")
 	return "OK"
 }
 

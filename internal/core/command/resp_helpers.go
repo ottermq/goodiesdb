@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/andrelcunha/goodiesdb/internal/protocol"
 )
@@ -29,6 +30,21 @@ func stringSliceToRESPArray(items []string) protocol.Array {
 	arr := make(protocol.Array, len(items))
 	for i, item := range items {
 		arr[i] = protocol.BulkString([]byte(item))
+	}
+	return arr
+}
+
+func hashToRESPArray(items map[string]string) protocol.Array {
+	keys := make([]string, 0, len(items))
+	for key := range items {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	arr := make(protocol.Array, 0, len(items)*2)
+	for _, key := range keys {
+		arr = append(arr, protocol.BulkString([]byte(key)))
+		arr = append(arr, protocol.BulkString([]byte(items[key])))
 	}
 	return arr
 }

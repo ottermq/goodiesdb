@@ -12,7 +12,7 @@ import (
 func TestSaveLoadSnapshot(t *testing.T) {
 	// Create a temporary AOF file
 	aofFilename := "test_appendonly.aof"
-	aofChan := make(chan string, 100)
+	aofChan := make(chan store.AOFCommand, 100)
 	dbIndex := 0
 
 	// Start the AOF writer
