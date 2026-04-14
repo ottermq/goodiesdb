@@ -22,16 +22,16 @@ import (
 
 // Server represents a TCP server
 type Server struct {
-	store                    *store.Store
-	config                   *Config
-	mu                       sync.Mutex
-	authenticatedConnections map[net.Conn]bool // TODO create a connection abstraction to hold more info
-	connectionDbs            map[net.Conn]int
-	shutdownChan             chan struct{}
-	dataDir                  string
-	Protocol                 protocol.Protocol
-	commandRegistry          *command.Registry
-	listener                 net.Listener
+	store           *store.Store
+	config          *Config
+	mu              sync.Mutex
+	connections     map[net.Conn]*Conn
+	broker          *PubSubBroker
+	shutdownChan    chan struct{}
+	dataDir         string
+	Protocol        protocol.Protocol
+	commandRegistry *command.Registry
+	listener        net.Listener
 }
 
 // NewServer creates a new server
@@ -47,14 +47,14 @@ func NewServer(config *Config) *Server {
 	aofChan := make(chan store.AOFCommand, 100)
 	s := store.NewStore(aofChan)
 	server := &Server{
-		store:                    s,
-		config:                   config,
-		authenticatedConnections: make(map[net.Conn]bool),
-		connectionDbs:            make(map[net.Conn]int),
-		shutdownChan:             make(chan struct{}),
-		dataDir:                  config.DataDir,
-		Protocol:                 protocol,
-		commandRegistry:          command.NewRegistry(),
+		store:           s,
+		config:          config,
+		connections:     make(map[net.Conn]*Conn),
+		broker:          newPubSubBroker(),
+		shutdownChan:    make(chan struct{}),
+		dataDir:         config.DataDir,
+		Protocol:        protocol,
+		commandRegistry: command.NewRegistry(),
 	}
 	return server
 }
@@ -126,14 +126,38 @@ func (s *Server) Shutdown() {
 	}
 }
 
+// allowedInSubMode is the set of commands permitted while a connection is in
+// subscriber mode. All others are rejected with an error.
+var allowedInSubMode = map[string]bool{
+	"SUBSCRIBE":   true,
+	"UNSUBSCRIBE": true,
+	"PSUBSCRIBE":  true,
+	"PUNSUBSCRIBE": true,
+	"PING":        true,
+	"QUIT":        true,
+}
+
 func (s *Server) handleConn(conn net.Conn) {
-	defer conn.Close()
+	s.mu.Lock()
+	c := newConn(conn)
+	s.connections[conn] = c
+	s.mu.Unlock()
+
+	defer func() {
+		// UnsubscribeAll closes the broker delivery channel, which terminates
+		// the write goroutine (if one was started) via range-channel exhaustion.
+		s.broker.UnsubscribeAll(conn)
+		s.mu.Lock()
+		delete(s.connections, conn)
+		s.mu.Unlock()
+		conn.Close()
+	}()
+
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
 
 	for {
 		value, err := s.Protocol.Parse(reader)
-
 		if err != nil {
 			if err.Error() == "EOF" {
 				return
@@ -144,7 +168,27 @@ func (s *Server) handleConn(conn net.Conn) {
 			continue
 		}
 
-		// Execute commmand
+		// Check subscriber mode restrictions before executing.
+		if c.mode == ModeSubscriber {
+			cmdName := ""
+			if arr, ok := value.(protocol.Array); ok && len(arr) > 0 {
+				if bs, ok := arr[0].(protocol.BulkString); ok {
+					cmdName = strings.ToUpper(string(bs))
+				}
+			}
+			if !allowedInSubMode[cmdName] {
+				s.Protocol.Encode(writer, protocol.ErrorString("ERR Command not allowed in subscribe mode"))
+				writer.Flush()
+				continue
+			}
+			// PING in subscriber mode returns a push array, not +PONG.
+			if cmdName == "PING" {
+				writer.Write([]byte("*3\r\n$4\r\npong\r\n$0\r\n\r\n"))
+				writer.Flush()
+				continue
+			}
+		}
+
 		reply, err := s.executeCommand(conn, value)
 		if err != nil {
 			reply := protocol.ErrorString(fmt.Sprintf("ERR %s", err.Error()))
@@ -153,9 +197,10 @@ func (s *Server) handleConn(conn net.Conn) {
 			continue
 		}
 
-		s.Protocol.Encode(writer, reply)
-		writer.Flush()
-		continue
+		if reply != nil {
+			s.Protocol.Encode(writer, reply)
+			writer.Flush()
+		}
 	}
 }
 
@@ -193,6 +238,10 @@ func (s *Server) invokeCommand(cmd command.Command, args []string, conn net.Conn
 		return protocol.ErrorString("NOAUTH Authentication required"), nil
 	}
 
+	s.mu.Lock()
+	c := s.connections[conn]
+	s.mu.Unlock()
+
 	ctx := &command.Context{
 		Store:     s.store,
 		DBIndex:   dbIndex,
@@ -209,6 +258,37 @@ func (s *Server) invokeCommand(cmd command.Command, args []string, conn net.Conn
 		},
 		Info: func() protocol.BulkString {
 			return s.Info()
+		},
+		PubSub: s.broker,
+		Write: func(v protocol.RESPValue) {
+			// Safe to write directly here: the write goroutine is only started
+			// after SetMode(ModeSubscriber) returns, so no concurrent writer yet.
+			w := bufio.NewWriter(conn)
+			s.Protocol.Encode(w, v)
+			w.Flush()
+		},
+		SetMode: func(mode int) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if c == nil {
+				return
+			}
+			newMode := ConnMode(mode)
+			if newMode == ModeSubscriber && c.mode != ModeSubscriber {
+				// First transition: get the delivery channel the broker created
+				// during Subscribe/PSubscribe and start the write goroutine.
+				deliveryCh := s.broker.GetConnChan(conn)
+				if deliveryCh != nil {
+					c.mode = ModeSubscriber
+					go func() {
+						for msg := range deliveryCh {
+							conn.Write(msg)
+						}
+					}()
+				}
+			} else if newMode == ModeNormal {
+				c.mode = ModeNormal
+			}
 		},
 	}
 

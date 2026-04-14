@@ -53,6 +53,11 @@ func NewRegistry() *Registry {
 	r.Register(NewFlushDBCommand())
 	r.Register(NewFlushAllCommand())
 	r.Register(NewScanCommand())
+	r.Register(NewSubscribeCommand())
+	r.Register(NewUnsubscribeCommand())
+	r.Register(NewPublishCommand())
+	r.Register(NewPSubscribeCommand())
+	r.Register(NewPUnsubscribeCommand())
 
 	return r
 }

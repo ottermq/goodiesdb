@@ -14,7 +14,8 @@ import (
 func (s *Server) isAuthenticates(conn net.Conn) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.authenticatedConnections[conn]
+	c, ok := s.connections[conn]
+	return ok && c.authed
 }
 
 func (s *Server) Authenticate(conn net.Conn, password string) bool {
@@ -23,27 +24,24 @@ func (s *Server) Authenticate(conn net.Conn, password string) bool {
 	if password != s.config.Password {
 		return false
 	}
-	s.authenticatedConnections[conn] = true
+	if c, ok := s.connections[conn]; ok {
+		c.authed = true
+	}
 	return true
 }
 
 func (s *Server) getCurrentDb(conn net.Conn) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	db, ok := s.connectionDbs[conn]
-	if !ok {
-		db = 0
-		s.connectionDbs[conn] = db
+	if c, ok := s.connections[conn]; ok {
+		return c.dbIndex
 	}
-	return db
+	return 0
 }
 
 // Quit closes the connection
 func (s *Server) Quit(conn net.Conn) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	fmt.Fprintln(conn, "OK")
-	delete(s.authenticatedConnections, conn)
 	conn.Close()
 }
 
@@ -55,7 +53,9 @@ func (s *Server) SelectDb(conn net.Conn, dbIndex int) error {
 	if dbIndex < 0 || dbIndex >= s.store.Count() {
 		return fmt.Errorf("invalid DB index")
 	}
-	s.connectionDbs[conn] = dbIndex
+	if c, ok := s.connections[conn]; ok {
+		c.dbIndex = dbIndex
+	}
 	return nil
 }
 

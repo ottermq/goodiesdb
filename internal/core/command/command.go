@@ -16,6 +16,17 @@ type Command interface {
 	RequiresAuth() bool
 }
 
+// PubSubBroker is the interface pub/sub commands use to interact with the broker.
+// Defined here to avoid an import cycle between command and server packages.
+type PubSubBroker interface {
+	Subscribe(conn net.Conn, channel string) int
+	Unsubscribe(conn net.Conn, channel string) int
+	PSubscribe(conn net.Conn, pattern string) int
+	PUnsubscribe(conn net.Conn, pattern string) int
+	Publish(channel, message string) int
+	UnsubscribeAll(conn net.Conn)
+}
+
 type Context struct {
 	Store     *store.Store
 	DBIndex   int
@@ -25,6 +36,10 @@ type Context struct {
 	Auth      func(password string) bool
 	SelectDB  func(dbIndex int) error
 	Info      func() protocol.BulkString
+	// Pub/sub support
+	PubSub  PubSubBroker
+	Write   func(v protocol.RESPValue) // write a response directly, bypassing normal return
+	SetMode func(mode int)             // flip connection mode (0 = normal, 1 = subscriber)
 }
 
 var ErrWrongNumberOfArguments = fmt.Errorf("ERR wrong number of arguments for command")
