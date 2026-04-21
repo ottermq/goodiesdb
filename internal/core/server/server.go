@@ -32,6 +32,7 @@ type Server struct {
 	Protocol        protocol.Protocol
 	commandRegistry *command.Registry
 	listener        net.Listener
+	connCounter     int64
 }
 
 // NewServer creates a new server
@@ -129,18 +130,21 @@ func (s *Server) Shutdown() {
 // allowedInSubMode is the set of commands permitted while a connection is in
 // subscriber mode. All others are rejected with an error.
 var allowedInSubMode = map[string]bool{
-	"SUBSCRIBE":   true,
-	"UNSUBSCRIBE": true,
-	"PSUBSCRIBE":  true,
+	"SUBSCRIBE":    true,
+	"UNSUBSCRIBE":  true,
+	"PSUBSCRIBE":   true,
 	"PUNSUBSCRIBE": true,
-	"PING":        true,
-	"QUIT":        true,
+	"PING":         true,
+	"QUIT":         true,
 }
 
 func (s *Server) handleConn(conn net.Conn) {
 	s.mu.Lock()
+	s.connCounter++
 	c := newConn(conn)
+	c.id = s.connCounter
 	s.connections[conn] = c
+
 	s.mu.Unlock()
 
 	defer func() {
@@ -259,6 +263,40 @@ func (s *Server) invokeCommand(cmd command.Command, args []string, conn net.Conn
 		Info: func() protocol.BulkString {
 			return s.Info()
 		},
+		// Region Client _commands
+		GetConnID: func() int64 {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if c == nil {
+				return 0
+			}
+			return c.id
+		},
+		GetConnName: func() string {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if c == nil {
+				return ""
+			}
+			return c.name
+		},
+		SetConnName: func(name string) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if c == nil {
+				return
+			}
+			c.name = name
+		},
+		GetConnInfo: func() string {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if c == nil {
+				return ""
+			}
+			return fmt.Sprintf("id=%d addr=%s name=%s db=%d", c.id, conn.RemoteAddr(), c.name, c.dbIndex)
+		},
+		// EndRegion
 		PubSub: s.broker,
 		Write: func(v protocol.RESPValue) {
 			// Safe to write directly here: the write goroutine is only started

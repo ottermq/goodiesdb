@@ -36,6 +36,11 @@ type Context struct {
 	Auth      func(password string) bool
 	SelectDB  func(dbIndex int) error
 	Info      func() protocol.BulkString
+	// Client command
+	GetConnID   func() int64
+	GetConnName func() string
+	SetConnName func(name string)
+	GetConnInfo func() string
 	// Pub/sub support
 	PubSub  PubSubBroker
 	Write   func(v protocol.RESPValue) // write a response directly, bypassing normal return

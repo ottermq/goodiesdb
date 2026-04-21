@@ -16,6 +16,8 @@ type Conn struct {
 	dbIndex int
 	authed  bool
 	mode    ConnMode
+	id      int64
+	name    string
 	// writeCh is not stored here — the broker owns the delivery channel per conn.
 	// The write goroutine is started by SetMode and drains broker.GetConnChan(conn).
 }
