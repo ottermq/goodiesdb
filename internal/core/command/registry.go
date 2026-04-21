@@ -59,6 +59,7 @@ func NewRegistry() *Registry {
 	r.Register(NewPSubscribeCommand())
 	r.Register(NewPUnsubscribeCommand())
 	r.Register(NewClientCommand())
+	r.Register(NewConfigCommand())
 	return r
 }
 
