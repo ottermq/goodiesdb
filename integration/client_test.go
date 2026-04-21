@@ -981,6 +981,61 @@ func TestClientNoEvictAndNoTouch(t *testing.T) {
 	}
 }
 
+func TestHello2(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	// HELLO with no args
+	result, err := client.Do(ctx, "HELLO").Slice()
+	if err != nil {
+		t.Fatalf("HELLO failed: %v", err)
+	}
+	if len(result) == 0 {
+		t.Fatal("expected non-empty HELLO response")
+	}
+
+	// HELLO 2 explicit
+	result, err = client.Do(ctx, "HELLO", "2").Slice()
+	if err != nil {
+		t.Fatalf("HELLO 2 failed: %v", err)
+	}
+	if len(result) == 0 {
+		t.Fatal("expected non-empty HELLO 2 response")
+	}
+}
+
+func TestHello3Rejected(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	err := client.Do(ctx, "HELLO", "3").Err()
+	if err == nil {
+		t.Fatal("expected HELLO 3 to return an error")
+	}
+	if !strings.Contains(err.Error(), "NOPROTO") {
+		t.Fatalf("expected NOPROTO error, got %v", err)
+	}
+}
+
+func TestHelloInvalidVersion(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	err := client.Do(ctx, "HELLO", "99").Err()
+	if err == nil {
+		t.Fatal("expected HELLO 99 to return an error")
+	}
+}
+
 func startTestServer(t *testing.T) string {
 	t.Helper()
 

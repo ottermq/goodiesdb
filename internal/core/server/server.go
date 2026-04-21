@@ -43,7 +43,7 @@ func NewServer(config *Config) *Server {
 		fmt.Printf("Error creating data directory: %v\n", err)
 		os.Exit(1)
 	}
-	protocol := &resp2.RESP2Protocol{}
+	proto := &resp2.RESP2Protocol{}
 
 	aofChan := make(chan store.AOFCommand, 100)
 	s := store.NewStore(aofChan)
@@ -54,7 +54,7 @@ func NewServer(config *Config) *Server {
 		broker:          newPubSubBroker(),
 		shutdownChan:    make(chan struct{}),
 		dataDir:         config.DataDir,
-		Protocol:        protocol,
+		Protocol:        proto,
 		commandRegistry: command.NewRegistry(),
 	}
 	return server
@@ -296,6 +296,9 @@ func (s *Server) invokeCommand(cmd command.Command, args []string, conn net.Conn
 				return ""
 			}
 			return fmt.Sprintf("id=%d addr=%s name=%s db=%d", c.id, conn.RemoteAddr(), c.name, c.dbIndex)
+		},
+		GetVersion: func() string {
+			return s.config.Version
 		},
 		// EndRegion
 		PubSub: s.broker,

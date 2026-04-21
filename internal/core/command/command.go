@@ -37,6 +37,7 @@ type Context struct {
 	SelectDB  func(dbIndex int) error
 	Info      func() protocol.BulkString
 	Protocol  protocol.Protocol
+	GetVersion  func() string
 	// Client command
 	GetConnID   func() int64
 	GetConnName func() string
