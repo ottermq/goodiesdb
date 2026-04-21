@@ -7,4 +7,5 @@ type Protocol interface {
 	Encode(writer *bufio.Writer, value RESPValue) error
 	EncodeNil() RESPValue
 	Version() string
+	ProtocolVersion() int
 }

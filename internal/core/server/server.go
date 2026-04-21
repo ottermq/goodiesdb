@@ -263,6 +263,7 @@ func (s *Server) invokeCommand(cmd command.Command, args []string, conn net.Conn
 		Info: func() protocol.BulkString {
 			return s.Info()
 		},
+		Protocol: s.Protocol,
 		// Region Client _commands
 		GetConnID: func() int64 {
 			s.mu.Lock()

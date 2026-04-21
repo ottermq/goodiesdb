@@ -36,6 +36,7 @@ type Context struct {
 	Auth      func(password string) bool
 	SelectDB  func(dbIndex int) error
 	Info      func() protocol.BulkString
+	Protocol  protocol.Protocol
 	// Client command
 	GetConnID   func() int64
 	GetConnName func() string
