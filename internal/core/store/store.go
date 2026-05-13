@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andrelcunha/goodiesdb/internal/utils/slice"
+	"github.com/ottermq/goodiesdb/internal/utils/slice"
 )
 
 var ErrNoSuchKey = fmt.Errorf("no such key")

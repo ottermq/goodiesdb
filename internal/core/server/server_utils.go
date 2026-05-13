@@ -6,14 +6,16 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/andrelcunha/goodiesdb/internal/persistence/aof"
-	"github.com/andrelcunha/goodiesdb/internal/persistence/rdb"
+	"github.com/ottermq/goodiesdb/internal/logging"
+	"github.com/ottermq/goodiesdb/internal/persistence/aof"
+	"github.com/ottermq/goodiesdb/internal/persistence/rdb"
 )
 
 func (s *Server) isAuthenticates(conn net.Conn) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.authenticatedConnections[conn]
+	c, ok := s.connections[conn]
+	return ok && c.authed
 }
 
 func (s *Server) Authenticate(conn net.Conn, password string) bool {
@@ -22,27 +24,24 @@ func (s *Server) Authenticate(conn net.Conn, password string) bool {
 	if password != s.config.Password {
 		return false
 	}
-	s.authenticatedConnections[conn] = true
+	if c, ok := s.connections[conn]; ok {
+		c.authed = true
+	}
 	return true
 }
 
 func (s *Server) getCurrentDb(conn net.Conn) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	db, ok := s.connectionDbs[conn]
-	if !ok {
-		db = 0
-		s.connectionDbs[conn] = db
+	if c, ok := s.connections[conn]; ok {
+		return c.dbIndex
 	}
-	return db
+	return 0
 }
 
 // Quit closes the connection
 func (s *Server) Quit(conn net.Conn) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	fmt.Fprintln(conn, "OK")
-	delete(s.authenticatedConnections, conn)
 	conn.Close()
 }
 
@@ -54,7 +53,9 @@ func (s *Server) SelectDb(conn net.Conn, dbIndex int) error {
 	if dbIndex < 0 || dbIndex >= s.store.Count() {
 		return fmt.Errorf("invalid DB index")
 	}
-	s.connectionDbs[conn] = dbIndex
+	if c, ok := s.connections[conn]; ok {
+		c.dbIndex = dbIndex
+	}
 	return nil
 }
 
@@ -106,9 +107,9 @@ func (s *Server) startRDB() {
 		select {
 		case <-time.After(1 * time.Minute):
 			if err := rdb.SaveSnapshot(s.store, rdbFilepath); err != nil {
-				fmt.Println("Error saving snapshot:", err)
+				logging.Errorf("Error saving snapshot: %v", err)
 			} else {
-				fmt.Println("Snapshot saved successfully")
+				logging.Infof("Snapshot saved successfully")
 			}
 
 		case <-s.shutdownChan:
@@ -123,7 +124,7 @@ func (s *Server) recoverStore() {
 	flagOk := false
 	if s.config.UseRDB {
 		if err := rdb.LoadSnapshot(s.store, rdbFilepath); err != nil {
-			fmt.Println("No snapshot found.")
+			logging.Infof("No snapshot found.")
 		} else {
 			flagOk = true
 		}
@@ -131,14 +132,14 @@ func (s *Server) recoverStore() {
 
 	if s.config.UseAOF && !flagOk {
 		if err := aof.RebuildStoreFromAOF(s.store, aofFilepath); err != nil {
-			fmt.Println("Error loading from AOF:", err)
+			logging.Errorf("Error loading from AOF: %v", err)
 
 		} else {
 			flagOk = true
 		}
 	}
 	if !flagOk {
-		fmt.Println("None of the recovery files are healthy. Starting with an empty store.")
+		logging.Infof("None of the recovery files are healthy. Starting with an empty store.")
 	}
 }
 

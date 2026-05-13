@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/logging"
+	"github.com/ottermq/goodiesdb/internal/protocol"
 )
 
 // Info returns server info
@@ -18,7 +19,7 @@ func (s *Server) Info() protocol.BulkString {
 	b.WriteString(fmt.Sprintf("uptime_in_seconds:%d\n", 1000))
 	b.WriteString(fmt.Sprintf("connected_clients:%d\n", 0))
 	bytArr := []byte(b.String())
-	fmt.Println("Sending info: ", b.String())
+	logging.Debugf("Sending info: %s", b.String())
 	return protocol.BulkString(bytArr)
 }
 

@@ -1,8 +1,8 @@
 package command
 
 import (
-	"github.com/andrelcunha/goodiesdb/internal/core/store"
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/core/store"
+	"github.com/ottermq/goodiesdb/internal/protocol"
 )
 
 type GetCommand struct{}

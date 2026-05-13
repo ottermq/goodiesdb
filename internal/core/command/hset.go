@@ -1,6 +1,6 @@
 package command
 
-import "github.com/andrelcunha/goodiesdb/internal/protocol"
+import "github.com/ottermq/goodiesdb/internal/protocol"
 
 type HSetCommand struct{}
 

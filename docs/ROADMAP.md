@@ -90,10 +90,8 @@ Recent progress:
 
 Add features only when they improve practical usability or reveal important implementation lessons, such as:
 
-- hashes
 - sets
 - sorted sets
-- pub/sub
 - transactions
 
 ### 9. Deepen operational realism
@@ -111,6 +109,15 @@ Areas worth exploring later:
 - competing with Redis on performance
 - full Redis feature parity
 - production-grade distributed systems concerns
+
+## Completed
+
+- Command registry pattern — registry-based dispatch is the primary path
+- Store decoupled from protocol encoding
+- Hash commands — `HSET`, `HGET`, `HGETALL`, `HDEL`, `HEXISTS`, `HLEN`, `HMGET`, `HKEYS`, `HVALS`
+- AOF persistence using RESP-encoded commands for lossless replay
+- Integration test suite using real Redis client libraries
+- Pub/sub — `SUBSCRIBE`, `UNSUBSCRIBE`, `PUBLISH`, `PSUBSCRIBE`, `PUNSUBSCRIBE` with Redis client compatibility, subscriber mode enforcement, pattern matching, and disconnect cleanup
 
 ## Success criteria
 

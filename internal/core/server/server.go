@@ -11,26 +11,28 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andrelcunha/goodiesdb/internal/core/command"
-	"github.com/andrelcunha/goodiesdb/internal/core/store"
-	"github.com/andrelcunha/goodiesdb/internal/persistence/aof"
-	"github.com/andrelcunha/goodiesdb/internal/persistence/rdb"
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
-	"github.com/andrelcunha/goodiesdb/internal/protocol/resp2"
+	"github.com/ottermq/goodiesdb/internal/core/command"
+	"github.com/ottermq/goodiesdb/internal/core/store"
+	"github.com/ottermq/goodiesdb/internal/logging"
+	"github.com/ottermq/goodiesdb/internal/persistence/aof"
+	"github.com/ottermq/goodiesdb/internal/persistence/rdb"
+	"github.com/ottermq/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/protocol/resp2"
 )
 
 // Server represents a TCP server
 type Server struct {
-	store                    *store.Store
-	config                   *Config
-	mu                       sync.Mutex
-	authenticatedConnections map[net.Conn]bool // TODO create a connection abstraction to hold more info
-	connectionDbs            map[net.Conn]int
-	shutdownChan             chan struct{}
-	dataDir                  string
-	Protocol                 protocol.Protocol
-	commandRegistry          *command.Registry
-	listener                 net.Listener
+	store           *store.Store
+	config          *Config
+	mu              sync.Mutex
+	connections     map[net.Conn]*Conn
+	broker          *PubSubBroker
+	shutdownChan    chan struct{}
+	dataDir         string
+	Protocol        protocol.Protocol
+	commandRegistry *command.Registry
+	listener        net.Listener
+	connCounter     int64
 }
 
 // NewServer creates a new server
@@ -41,43 +43,43 @@ func NewServer(config *Config) *Server {
 		fmt.Printf("Error creating data directory: %v\n", err)
 		os.Exit(1)
 	}
-	protocol := &resp2.RESP2Protocol{}
+	proto := &resp2.RESP2Protocol{}
 
 	aofChan := make(chan store.AOFCommand, 100)
 	s := store.NewStore(aofChan)
 	server := &Server{
-		store:                    s,
-		config:                   config,
-		authenticatedConnections: make(map[net.Conn]bool),
-		connectionDbs:            make(map[net.Conn]int),
-		shutdownChan:             make(chan struct{}),
-		dataDir:                  config.DataDir,
-		Protocol:                 protocol,
-		commandRegistry:          command.NewRegistry(),
+		store:           s,
+		config:          config,
+		connections:     make(map[net.Conn]*Conn),
+		broker:          newPubSubBroker(),
+		shutdownChan:    make(chan struct{}),
+		dataDir:         config.DataDir,
+		Protocol:        proto,
+		commandRegistry: command.NewRegistry(),
 	}
 	return server
 }
 
 // Start starts the server
 func (s *Server) Start() error {
-	fmt.Println(s.asciiLogo())
-	fmt.Println("Starting Redis Clone Server...")
+	logging.Infof("%s", s.asciiLogo())
+	logging.Infof("Starting GoodiesDB server...")
 
 	if s.config.UseRDB || s.config.UseAOF {
-		fmt.Println("Found persistence enabled. Recovering data...")
+		logging.Infof("Found persistence enabled. Recovering data...")
 		s.recoverStore()
 	} else {
-		fmt.Println("No persistence enabled. Data will not be persisted.")
+		logging.Infof("No persistence enabled. Data will not be persisted.")
 	}
 
 	if s.config.UseRDB {
 		go s.startRDB()
-		fmt.Println("RDB persistence enabled")
+		logging.Infof("RDB persistence enabled")
 	}
 	if s.config.UseAOF {
 		aofFilepath := filepath.Join(s.dataDir, "appendonly.aof")
 		go aof.AOFWriter(s.store.AOFChannel(), aofFilepath)
-		fmt.Println("AOF persistence enabled")
+		logging.Infof("AOF persistence enabled")
 	}
 
 	// set addr string (host and port) using config
@@ -95,7 +97,7 @@ func (s *Server) Start() error {
 		s.mu.Unlock()
 		_ = ln.Close()
 	}()
-	fmt.Printf("Redis Clone Server %s started on %s\n", s.config.Version, ln.Addr().String())
+	logging.Infof("GoodiesDB %s listening on %s", s.config.Version, ln.Addr().String())
 
 	for {
 		conn, err := ln.Accept()
@@ -103,7 +105,7 @@ func (s *Server) Start() error {
 			if errors.Is(err, net.ErrClosed) {
 				return nil
 			}
-			fmt.Println("Error accepting connection:", err)
+			logging.Errorf("Error accepting connection: %v", err)
 			continue
 		}
 		go s.handleConn(conn)
@@ -125,14 +127,41 @@ func (s *Server) Shutdown() {
 	}
 }
 
+// allowedInSubMode is the set of commands permitted while a connection is in
+// subscriber mode. All others are rejected with an error.
+var allowedInSubMode = map[string]bool{
+	"SUBSCRIBE":    true,
+	"UNSUBSCRIBE":  true,
+	"PSUBSCRIBE":   true,
+	"PUNSUBSCRIBE": true,
+	"PING":         true,
+	"QUIT":         true,
+}
+
 func (s *Server) handleConn(conn net.Conn) {
-	defer conn.Close()
+	s.mu.Lock()
+	s.connCounter++
+	c := newConn(conn)
+	c.id = s.connCounter
+	s.connections[conn] = c
+
+	s.mu.Unlock()
+
+	defer func() {
+		// UnsubscribeAll closes the broker delivery channel, which terminates
+		// the write goroutine (if one was started) via range-channel exhaustion.
+		s.broker.UnsubscribeAll(conn)
+		s.mu.Lock()
+		delete(s.connections, conn)
+		s.mu.Unlock()
+		conn.Close()
+	}()
+
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
 
 	for {
 		value, err := s.Protocol.Parse(reader)
-
 		if err != nil {
 			if err.Error() == "EOF" {
 				return
@@ -143,7 +172,27 @@ func (s *Server) handleConn(conn net.Conn) {
 			continue
 		}
 
-		// Execute commmand
+		// Check subscriber mode restrictions before executing.
+		if c.mode == ModeSubscriber {
+			cmdName := ""
+			if arr, ok := value.(protocol.Array); ok && len(arr) > 0 {
+				if bs, ok := arr[0].(protocol.BulkString); ok {
+					cmdName = strings.ToUpper(string(bs))
+				}
+			}
+			if !allowedInSubMode[cmdName] {
+				s.Protocol.Encode(writer, protocol.ErrorString("ERR Command not allowed in subscribe mode"))
+				writer.Flush()
+				continue
+			}
+			// PING in subscriber mode returns a push array, not +PONG.
+			if cmdName == "PING" {
+				writer.Write([]byte("*3\r\n$4\r\npong\r\n$0\r\n\r\n"))
+				writer.Flush()
+				continue
+			}
+		}
+
 		reply, err := s.executeCommand(conn, value)
 		if err != nil {
 			reply := protocol.ErrorString(fmt.Sprintf("ERR %s", err.Error()))
@@ -152,9 +201,10 @@ func (s *Server) handleConn(conn net.Conn) {
 			continue
 		}
 
-		s.Protocol.Encode(writer, reply)
-		writer.Flush()
-		continue
+		if reply != nil {
+			s.Protocol.Encode(writer, reply)
+			writer.Flush()
+		}
 	}
 }
 
@@ -171,13 +221,12 @@ func (s *Server) executeCommand(conn net.Conn, request protocol.RESPValue) (prot
 
 	cmdName := strings.ToUpper(parts[0])
 	args := parts[1:]
-	fmt.Printf("Executing command: %s %v\n", cmdName, args)
+	logging.Debugf("Executing command: %s %v", cmdName, args)
 	dbIndex := s.getCurrentDb(conn)
 	/* Using registered commands*/
 
 	cmd, ok := s.commandRegistry.Get(cmdName)
 	if ok {
-		fmt.Printf("invoking %s", cmd.Name())
 		return s.invokeCommand(cmd, args, conn, dbIndex)
 	}
 	return protocol.ErrorString("ERR unknown command '" + parts[0] + "'"), nil
@@ -192,6 +241,10 @@ func (s *Server) invokeCommand(cmd command.Command, args []string, conn net.Conn
 	if cmd.RequiresAuth() && !s.isAuthenticates(conn) {
 		return protocol.ErrorString("NOAUTH Authentication required"), nil
 	}
+
+	s.mu.Lock()
+	c := s.connections[conn]
+	s.mu.Unlock()
 
 	ctx := &command.Context{
 		Store:     s.store,
@@ -209,6 +262,75 @@ func (s *Server) invokeCommand(cmd command.Command, args []string, conn net.Conn
 		},
 		Info: func() protocol.BulkString {
 			return s.Info()
+		},
+		Protocol: s.Protocol,
+		// Region Client _commands
+		GetConnID: func() int64 {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if c == nil {
+				return 0
+			}
+			return c.id
+		},
+		GetConnName: func() string {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if c == nil {
+				return ""
+			}
+			return c.name
+		},
+		SetConnName: func(name string) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if c == nil {
+				return
+			}
+			c.name = name
+		},
+		GetConnInfo: func() string {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if c == nil {
+				return ""
+			}
+			return fmt.Sprintf("id=%d addr=%s name=%s db=%d", c.id, conn.RemoteAddr(), c.name, c.dbIndex)
+		},
+		GetVersion: func() string {
+			return s.config.Version
+		},
+		// EndRegion
+		PubSub: s.broker,
+		Write: func(v protocol.RESPValue) {
+			// Safe to write directly here: the write goroutine is only started
+			// after SetMode(ModeSubscriber) returns, so no concurrent writer yet.
+			w := bufio.NewWriter(conn)
+			s.Protocol.Encode(w, v)
+			w.Flush()
+		},
+		SetMode: func(mode int) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if c == nil {
+				return
+			}
+			newMode := ConnMode(mode)
+			if newMode == ModeSubscriber && c.mode != ModeSubscriber {
+				// First transition: get the delivery channel the broker created
+				// during Subscribe/PSubscribe and start the write goroutine.
+				deliveryCh := s.broker.GetConnChan(conn)
+				if deliveryCh != nil {
+					c.mode = ModeSubscriber
+					go func() {
+						for msg := range deliveryCh {
+							conn.Write(msg)
+						}
+					}()
+				}
+			} else if newMode == ModeNormal {
+				c.mode = ModeNormal
+			}
 		},
 	}
 

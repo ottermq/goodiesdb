@@ -2,135 +2,83 @@
 
 ## Snapshot
 
-This document captures the state of the repository as of the `feat/command_registry_pattern` branch analysis on March 27, 2026.
+Last updated: April 2026.
 
 ## What GoodiesDB is trying to be
 
-GoodiesDB is no longer just a Redis clone exercise. The practical target is:
+A Redis-compatible datastore good enough for pet projects — not a production Redis
+replacement, but a practical and educational implementation that real Redis clients
+can talk to without surprises.
 
-- good enough Redis compatibility for pet projects
-- enough maturity to serve as a Redis substitute in those projects
-- an educational codebase that exposes the kinds of problems Redis developers had to solve
+## Architecture
 
-## What the branch was doing
+- **Command registry** — all commands registered as dedicated types, dispatched
+  through `invokeCommand`. No monolithic switch.
+- **Connection abstraction** — each client connection is tracked as a `Conn` struct
+  holding DB index, auth status, and pub/sub mode.
+- **Store** — in-memory, 16 databases, lazy expiration, decoupled from protocol
+  encoding.
+- **Persistence** — AOF (RESP-encoded, lossless replay) and RDB snapshots. Both
+  optional and independently configurable.
+- **Protocol** — RESP2. RESP3 types defined but not yet used.
+- **Pub/sub broker** — global (across all DBs), one delivery channel per connection,
+  exact and glob-pattern fanout, drop-on-full with logging.
 
-The current branch appears to be an incremental refactor toward a command registry pattern.
+## Implemented commands
 
-The likely objectives were:
+### Strings
+`GET` `SET` `SETNX` `INCR` `DECR` `STRLEN` `GETRANGE`
 
-- remove the monolithic command switch from the server
-- encapsulate command behavior in dedicated types
-- centralize command validation
-- make future command additions and compatibility work easier
+### Lists
+`LPUSH` `RPUSH` `LPOP` `RPOP` `LRANGE` `LTRIM`
 
-## Evidence from commit history
+### Hashes
+`HSET` `HGET` `HGETALL` `HDEL` `HEXISTS` `HLEN` `HMGET` `HKEYS` `HVALS`
 
-Recent branch commits, in order:
+### Key management
+`DEL` `EXISTS` `EXPIRE` `TTL` `TYPE` `KEYS` `RENAME` `SCAN`
 
-1. add `Command` interface and `Context`
-2. add command registry
-3. implement `GET` command
-4. add `Store.Delete()`
-5. add `Store.SetProtocol()`
-6. add `Value.ToString()`
-7. integrate registry into server
-8. implement `SET` command
+### Pub/Sub
+`SUBSCRIBE` `UNSUBSCRIBE` `PUBLISH` `PSUBSCRIBE` `PUNSUBSCRIBE`
 
-This strongly suggests the refactor stopped shortly after a vertical slice for `GET` and `SET`.
+### Server
+`AUTH` `SELECT` `INFO` `PING` `ECHO` `QUIT` `FLUSHDB` `FLUSHALL`
 
-Since then, the branch has been continued and the migration has been completed for the currently implemented commands.
+## Pub/Sub notes
 
-## Current command execution model
+- Channels are global across all databases.
+- Subscriber mode is enforced — only sub/unsub/ping/quit allowed after `SUBSCRIBE`.
+- `PING` in subscriber mode returns the push-format pong array, not `+PONG`.
+- Pattern matching uses glob semantics (`path.Match`), same as Redis.
+- Disconnect cleanup is automatic — the broker delivery channel is closed, which
+  terminates the write goroutine.
+- Known gap: `UNSUBSCRIBE` with zero args sends a single nil-channel confirmation
+  instead of one per subscribed channel. Redis sends one per channel.
 
-The command registry migration is now effectively complete for the currently implemented command set.
+## Testing
 
-Today the server uses this flow:
+Integration tests in `integration/` start GoodiesDB and exercise it through the
+real `go-redis/v9` client. Unit tests cover store and persistence internals.
+Broker behaviour is tested in `internal/core/server/pubsub_test.go`.
 
-- parse the RESP array
-- resolve `cmdName`
-- load the command from `commandRegistry`
-- execute it through `invokeCommand()`
-- return `ERR unknown command '<name>'` if no command is registered
+Run all tests:
+```
+go test ./...
+```
 
-The old command switch has been retired.
+## Known issues / next steps
 
-## Compatibility progress
-
-The current branch now includes a first useful slice of Redis hash support aimed at real client flows:
-
-- `HSET`
-- `HGET`
-- `HGETALL`
-- `HDEL`
-- `HEXISTS`
-- `HLEN`
-- `HMGET`
-- `HKEYS`
-- `HVALS`
-
-This moves hashes from "planned" toward "usable for common application state", especially for object and session-style storage.
-
-## Persistence status
-
-AOF persistence now uses RESP-encoded commands instead of the earlier space-split text format.
-
-That fixes lossless replay for values containing spaces and other structured string content, but it is also a deliberate format break:
-
-- current versions replay RESP-based AOF only
-- older line-based `appendonly.aof` files are ignored during recovery
-- when only a legacy AOF is present, GoodiesDB starts with an empty store
-
-## Known issues
-
-### Historical note: deadlock in store deletion path
-
-The branch originally contained a lock recursion bug in the delete path. That issue has been fixed.
-
-### Transitional layering smell
-
-That bridge has now been removed. Nil reply shaping is handled by the command/server layer instead of the store.
-
-### Responsibility overlap
-
-`GET` command still performs explicit expiration handling even though `Store.Get()` already suppresses expired values.
-
-## What should happen next
-
-Recommended order:
-
-1. Strengthen integration coverage for edge cases and unsupported command behavior.
-2. Continue improving Redis-client compatibility command by command.
-3. Revisit whether session-aware commands need a richer connection abstraction.
-4. Clarify expiration responsibility between command and store layers.
-5. Keep trimming transitional abstractions where they no longer pay for themselves.
-
-## Testing direction
-
-Historically, features were validated manually by connecting with a Redis client and checking behavior interactively.
-
-That should now become an explicit automated testing strategy:
-
-- keep unit tests for store and persistence behavior
-- add integration tests that start GoodiesDB and use Redis client libraries to exercise features end to end
-
-This is the right fit for the project because the main success criterion is not strict internal design purity. It is whether Redis clients can use GoodiesDB without surprises.
-
-Priority test targets:
-
-- `SET` and `GET`
-- expiration behavior
-- list operations
-- `SELECT`
-- nil responses
-- error replies
-- command argument validation
+1. `UNSUBSCRIBE` zero-args gap — broker needs a method to list channels for a conn.
+2. Client-facing compatibility — argument validation and nil/error reply alignment
+   still has gaps; work command by command against real client expectations.
+3. Connection-level commands — `AUTH`, `SELECT`, `QUIT` should route through the
+   `Conn` abstraction more cleanly.
+4. Expiration responsibility — `GET` still does explicit expiration handling even
+   though `Store.Get()` already suppresses expired values.
+5. Sets and sorted sets — not yet implemented.
 
 ## Resume checklist
 
-When restarting implementation work:
-
-1. Read `AGENTS.md`
-2. Read `docs/refactoring/COMMAND_REGISTRY_REFACTOR.md`
-3. Re-run `GOCACHE=/tmp/gocache go test ./...`
-4. Review the remaining architectural cleanup items
-5. Extend compatibility tests for edge cases before large behavior changes
+1. Run `go test ./...` to verify green baseline.
+2. Check `docs/ROADMAP.md` for current priorities.
+3. Pick up from the known issues list above.

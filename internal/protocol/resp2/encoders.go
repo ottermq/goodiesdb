@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/protocol"
 )
 
 func (*RESP2Protocol) encodeSimpleString(writer *bufio.Writer, value protocol.SimpleString) error {

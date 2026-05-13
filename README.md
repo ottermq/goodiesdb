@@ -1,9 +1,9 @@
 # Goodies DB - A Redis implementation in Go
 
-[![Go](https://github.com/andrelcunha/goodiesdb/actions/workflows/go.yml/badge.svg)](https://github.com/andrelcunha/goodiesdb/actions/workflows/go.yml)
-[![Docker Image CI](https://github.com/andrelcunha/goodiesdb/actions/workflows/docker-image.yml/badge.svg)](https://github.com/andrelcunha/goodiesdb/actions/workflows/docker-image.yml)
+[![Go](https://github.com/ottermq/goodiesdb/actions/workflows/go.yml/badge.svg)](https://github.com/ottermq/goodiesdb/actions/workflows/go.yml)
+[![Docker Image CI](https://github.com/ottermq/goodiesdb/actions/workflows/docker-image.yml/badge.svg)](https://github.com/ottermq/goodiesdb/actions/workflows/docker-image.yml)
 
-GoodiesDb started as a Redis implementation written in Go, serving as an educational project to learn and understand the inner workings of Redis, a popular in-memory data structure store. The current state of the project implements a subset of Redis's commands, including `AUTH`, `SET`, `GET`, `DEL`, `EXISTS`, `SETNX`, `EXPIRE`, `INCR`, `DECR`, `TTL`, `SELECT`, `LPUSH`, `RPUSH`, `LPOP`, `RPOP`, `LRANGE`, `LTRIM`, `RENAME`, `TYPE`, `KEYS`, `INFO`, `PING`, `ECHO`, `QUIT`, `FLUSHDB`, `FLUSHALL`, `HSET`, `HGET`, `HGETALL`, `HDEL`, `HEXISTS`, `HLEN`, `HMGET`, `HKEYS` and `HVALS`.
+GoodiesDb started as a Redis implementation written in Go, serving as an educational project to learn and understand the inner workings of Redis, a popular in-memory data structure store. The current state of the project implements a subset of Redis commands across strings, lists, hashes, key management, pub/sub, and server operations — see [Features](#features) for the full list.
 
 **Disclaimer:** This is not a production-ready Redis clone and it is not intended for use in production environments (yet).
 
@@ -24,23 +24,33 @@ GoodiesDB aims to mimic the basic functionalities of Redis to provide a learning
 
 ## Features
 
-- In-memory key-value store
-- Data persistence using RDB and AOF
-- Support for lists and basic hash maps
-- Publish/Subscribe messaging (planned)
-- Basic transaction support
-- Lua scripting execution (planned)
-- Master-slave replication (planned)
-- Sharding (planned)
+- In-memory key-value store with 16 logical databases
+- Data persistence via AOF (RESP-encoded) and RDB snapshots
+- Registry-based command dispatch — no monolithic switch
+- Pub/Sub messaging with pattern matching and subscriber mode enforcement
+
+### Supported commands
+
+**Strings:** `SET` `GET` `SETNX` `INCR` `DECR` `STRLEN` `GETRANGE`
+
+**Lists:** `LPUSH` `RPUSH` `LPOP` `RPOP` `LRANGE` `LTRIM`
+
+**Hashes:** `HSET` `HGET` `HGETALL` `HDEL` `HEXISTS` `HLEN` `HMGET` `HKEYS` `HVALS`
+
+**Key management:** `DEL` `EXISTS` `EXPIRE` `TTL` `TYPE` `KEYS` `RENAME` `SCAN`
+
+**Pub/Sub:** `SUBSCRIBE` `UNSUBSCRIBE` `PSUBSCRIBE` `PUNSUBSCRIBE` `PUBLISH`
+
+**Server:** `AUTH` `SELECT` `INFO` `PING` `ECHO` `QUIT` `FLUSHDB` `FLUSHALL`
 
 ## Installation
 
-To get started with Redis Clone, follow these steps:
+To get started with GoodiesDB, follow these steps:
 
 1. **Clone the repository**:
 
     ```bash
-    git clone https://github.com/andrelcunha/goodiesdb.git
+    git clone https://github.com/ottermq/goodiesdb.git
     cd GoodiesDB
     ```
 
@@ -64,7 +74,19 @@ Run the GoodiesDb server:
 make run
 ```
 
-You can then interact with the server using PuTTY on raw TCP port 6379.
+Control log verbosity with `LOG_LEVEL`:
+
+```bash
+LOG_LEVEL=debug make run
+```
+
+Supported values are `error`, `info`, and `debug`. The default is `info`.
+
+You can then connect with any Redis-compatible client on port 6379, or run the integration test suite:
+
+```bash
+go test ./...
+```
 
 ## Documentation
 

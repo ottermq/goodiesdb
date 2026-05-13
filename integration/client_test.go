@@ -9,7 +9,7 @@ import (
 
 	redis "github.com/redis/go-redis/v9"
 
-	"github.com/andrelcunha/goodiesdb/internal/core/server"
+	"github.com/ottermq/goodiesdb/internal/core/server"
 )
 
 func TestPingAndSetGet(t *testing.T) {
@@ -858,6 +858,182 @@ func TestAOFRestartPreservesValuesWithSpaces(t *testing.T) {
 	}
 
 	stopServer(t, srv, errCh)
+}
+
+func TestClientSetNameAndGetName(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+
+	// Use a pinned connection — ClientSetName is per-connection state.
+	conn := newRedisClient(t, addr, 0).Conn()
+	defer conn.Close()
+
+	if err := conn.ClientSetName(ctx, "myconn").Err(); err != nil {
+		t.Fatalf("CLIENT SETNAME failed: %v", err)
+	}
+	name, err := conn.ClientGetName(ctx).Result()
+	if err != nil {
+		t.Fatalf("CLIENT GETNAME after set failed: %v", err)
+	}
+	if name != "myconn" {
+		t.Fatalf("expected CLIENT GETNAME %q, got %q", "myconn", name)
+	}
+
+	fresh := newRedisClient(t, addr, 0).Conn()
+	defer fresh.Close()
+	_, err = fresh.ClientGetName(ctx).Result()
+	if err != redis.Nil {
+		t.Fatalf("expected redis.Nil for CLIENT GETNAME on unnamed connection, got %v", err)
+	}
+
+	err = conn.ClientSetName(ctx, "bad name").Err()
+	if err == nil {
+		t.Fatalf("expected CLIENT SETNAME with spaces to return an error")
+	}
+}
+
+func TestClientID(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	c1 := newRedisClient(t, addr, 0)
+	c2 := newRedisClient(t, addr, 0)
+
+	id1, err := c1.ClientID(ctx).Result()
+	if err != nil {
+		t.Fatalf("CLIENT ID on c1 failed: %v", err)
+	}
+	if id1 <= 0 {
+		t.Fatalf("expected CLIENT ID to be positive, got %d", id1)
+	}
+
+	id2, err := c2.ClientID(ctx).Result()
+	if err != nil {
+		t.Fatalf("CLIENT ID on c2 failed: %v", err)
+	}
+	if id2 <= 0 {
+		t.Fatalf("expected CLIENT ID to be positive, got %d", id2)
+	}
+
+	if id1 == id2 {
+		t.Fatalf("expected different CLIENT IDs for different connections, both got %d", id1)
+	}
+}
+
+func TestClientInfoAndList(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	info, err := client.Do(ctx, "CLIENT", "INFO").Text()
+	if err != nil {
+		t.Fatalf("CLIENT INFO failed: %v", err)
+	}
+	if info == "" {
+		t.Fatalf("expected CLIENT INFO to return non-empty string")
+	}
+
+	list, err := client.Do(ctx, "CLIENT", "LIST").Text()
+	if err != nil {
+		t.Fatalf("CLIENT LIST failed: %v", err)
+	}
+	if list == "" {
+		t.Fatalf("expected CLIENT LIST to return non-empty string")
+	}
+}
+
+func TestClientNoEvictAndNoTouch(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	result, err := client.Do(ctx, "CLIENT", "NO-EVICT", "ON").Text()
+	if err != nil {
+		t.Fatalf("CLIENT NO-EVICT ON failed: %v", err)
+	}
+	if result != "OK" {
+		t.Fatalf("expected CLIENT NO-EVICT ON to return OK, got %q", result)
+	}
+
+	result, err = client.Do(ctx, "CLIENT", "NO-TOUCH", "ON").Text()
+	if err != nil {
+		t.Fatalf("CLIENT NO-TOUCH ON failed: %v", err)
+	}
+	if result != "OK" {
+		t.Fatalf("expected CLIENT NO-TOUCH ON to return OK, got %q", result)
+	}
+
+	err = client.Do(ctx, "CLIENT", "NO-EVICT").Err()
+	if err == nil {
+		t.Fatal("expected error for CLIENT NO-EVICT with no arg")
+	}
+
+	err = client.Do(ctx, "CLIENT", "NO-EVICT", "MAYBE").Err()
+	if err == nil {
+		t.Fatal("expected error for CLIENT NO-EVICT with invalid arg")
+	}
+}
+
+func TestHello2(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	// HELLO with no args
+	result, err := client.Do(ctx, "HELLO").Slice()
+	if err != nil {
+		t.Fatalf("HELLO failed: %v", err)
+	}
+	if len(result) == 0 {
+		t.Fatal("expected non-empty HELLO response")
+	}
+
+	// HELLO 2 explicit
+	result, err = client.Do(ctx, "HELLO", "2").Slice()
+	if err != nil {
+		t.Fatalf("HELLO 2 failed: %v", err)
+	}
+	if len(result) == 0 {
+		t.Fatal("expected non-empty HELLO 2 response")
+	}
+}
+
+func TestHello3Rejected(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	err := client.Do(ctx, "HELLO", "3").Err()
+	if err == nil {
+		t.Fatal("expected HELLO 3 to return an error")
+	}
+	if !strings.Contains(err.Error(), "NOPROTO") {
+		t.Fatalf("expected NOPROTO error, got %v", err)
+	}
+}
+
+func TestHelloInvalidVersion(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addr := startTestServer(t)
+	client := newRedisClient(t, addr, 0)
+
+	err := client.Do(ctx, "HELLO", "99").Err()
+	if err == nil {
+		t.Fatal("expected HELLO 99 to return an error")
+	}
 }
 
 func startTestServer(t *testing.T) string {

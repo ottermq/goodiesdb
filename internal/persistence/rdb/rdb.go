@@ -4,8 +4,16 @@ import (
 	"encoding/gob"
 	"os"
 
-	"github.com/andrelcunha/goodiesdb/internal/core/store"
+	"github.com/ottermq/goodiesdb/internal/core/store"
 )
+
+func init() {
+	gob.Register("")
+	gob.Register([]any{})
+	gob.Register(map[string]any{})
+	gob.Register(map[string]struct{}{})
+	gob.Register(map[string]float64{})
+}
 
 // SaveSnapshot saves the current state of the store to a file
 func SaveSnapshot(s *store.Store, filename string) error {

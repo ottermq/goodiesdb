@@ -4,20 +4,21 @@ import (
 	"bufio"
 	"errors"
 	"io"
-	"log"
 	"os"
 	"strconv"
 
-	"github.com/andrelcunha/goodiesdb/internal/core/store"
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
-	"github.com/andrelcunha/goodiesdb/internal/protocol/resp2"
+	"github.com/ottermq/goodiesdb/internal/core/store"
+	"github.com/ottermq/goodiesdb/internal/logging"
+	"github.com/ottermq/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/protocol/resp2"
 )
 
 // AOFWriter writes commands to a file
 func AOFWriter(aofChan chan store.AOFCommand, filename string) {
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatalf("Failed to open AOF file: %v", err)
+		logging.Errorf("Failed to open AOF file: %v", err)
+		return
 	}
 	defer file.Close()
 
@@ -26,10 +27,12 @@ func AOFWriter(aofChan chan store.AOFCommand, filename string) {
 
 	for cmd := range aofChan {
 		if err := proto.Encode(writer, toRESPArray(cmd)); err != nil {
-			log.Fatalf("Failed to write to AOF file: %v", err)
+			logging.Errorf("Failed to write to AOF file: %v", err)
+			return
 		}
 		if err := writer.Flush(); err != nil {
-			log.Fatalf("Failed to flush AOF file: %v", err)
+			logging.Errorf("Failed to flush AOF file: %v", err)
+			return
 		}
 	}
 }
@@ -51,7 +54,7 @@ func RebuildStoreFromAOF(s *store.Store, filename string) error {
 		return err
 	}
 	if peek[0] != '*' {
-		log.Printf("Legacy line-based AOF detected in %s; ignoring file and starting with an empty store", filename)
+		logging.Infof("Legacy line-based AOF detected in %s; ignoring file and starting with an empty store", filename)
 		return nil
 	}
 
@@ -107,7 +110,7 @@ func dispatchAOF(parts []string, s *store.Store) {
 	cmdName := parts[0]
 	dbIndex, ok := parseDBIndex(parts)
 	if !ok && cmdName != "FLUSHALL" {
-		log.Printf("Invalid AOF command database index for %q", cmdName)
+		logging.Errorf("Invalid AOF command database index for %q", cmdName)
 		return
 	}
 
@@ -145,7 +148,7 @@ func dispatchAOF(parts []string, s *store.Store) {
 	case "HDEL":
 		aofHDel(parts, s, dbIndex)
 	default:
-		log.Printf("Unknown AOF command: %v", parts)
+		logging.Errorf("Unknown AOF command: %v", parts)
 	}
 }
 

@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/protocol"
 )
 
 // Implement the protocol.Protocol interface for RESP2 here
@@ -51,6 +51,10 @@ func (r2 *RESP2Protocol) Encode(writer *bufio.Writer, value protocol.RESPValue) 
 
 func (r2 *RESP2Protocol) Version() string {
 	return "RESP2"
+}
+
+func (r2 *RESP2Protocol) ProtocolVersion() int {
+	return 2
 }
 
 func (r2 *RESP2Protocol) EncodeNil() protocol.RESPValue {

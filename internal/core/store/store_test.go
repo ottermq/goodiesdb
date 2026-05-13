@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andrelcunha/goodiesdb/internal/utils/slice"
+	"github.com/ottermq/goodiesdb/internal/utils/slice"
 )
 
 func TestStore(t *testing.T) {
