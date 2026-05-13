@@ -123,7 +123,7 @@ func (s *Server) Shutdown() {
 	}
 
 	if s.config.UseRDB {
-		rdb.SaveSnapshot(s.store, "dump.rdb")
+		rdb.SaveSnapshot(s.store, filepath.Join(s.dataDir, "dump.rdb"))
 	}
 }
 
