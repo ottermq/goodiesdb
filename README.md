@@ -1,11 +1,11 @@
-# Goodies DB - A Redis implementation in Go
+# GoodiesDB
 
 [![Go](https://github.com/ottermq/goodiesdb/actions/workflows/go.yml/badge.svg)](https://github.com/ottermq/goodiesdb/actions/workflows/go.yml)
 [![Docker Image CI](https://github.com/ottermq/goodiesdb/actions/workflows/docker-image.yml/badge.svg)](https://github.com/ottermq/goodiesdb/actions/workflows/docker-image.yml)
 
-GoodiesDb started as a Redis implementation written in Go, serving as an educational project to learn and understand the inner workings of Redis, a popular in-memory data structure store. The current state of the project implements a subset of Redis commands across strings, lists, hashes, key management, pub/sub, and server operations — see [Features](#features) for the full list.
+GoodiesDB is an in-memory data store written in Go that speaks the RESP2/RESP3 protocol, making it compatible with existing RESP clients. It implements a practical subset of commands across strings, lists, hashes, key management, pub/sub, and server operations — see [Features](#features) for the full list. The project is educational at heart: a hands-on way to understand how in-memory stores, persistence, and wire protocols work.
 
-**Disclaimer:** This is not a production-ready Redis clone and it is not intended for use in production environments (yet).
+**Disclaimer:** GoodiesDB is not intended for production use (yet).
 
 ---
 

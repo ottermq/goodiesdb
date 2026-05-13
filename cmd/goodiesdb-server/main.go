@@ -55,6 +55,6 @@ func main() {
 	// Block until the context is canceled
 	<-ctx.Done()
 	fmt.Println("\nReceived termination signal. ")
-	fmt.Println("Shutting down Redis Clone Server...")
+	fmt.Println("Shutting down GoodiesDB...")
 	srv.Shutdown()
 }
