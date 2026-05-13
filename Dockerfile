@@ -27,7 +27,6 @@ WORKDIR /root/
 
 # Copy the binary from the build stage
 COPY --from=builder /app/bin/goodiesdb-server .
-COPY .env.docker ./.env
 
 
 # Expose port 6379 to the outside world
