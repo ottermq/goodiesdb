@@ -11,13 +11,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andrelcunha/goodiesdb/internal/core/command"
-	"github.com/andrelcunha/goodiesdb/internal/core/store"
-	"github.com/andrelcunha/goodiesdb/internal/logging"
-	"github.com/andrelcunha/goodiesdb/internal/persistence/aof"
-	"github.com/andrelcunha/goodiesdb/internal/persistence/rdb"
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
-	"github.com/andrelcunha/goodiesdb/internal/protocol/resp2"
+	"github.com/ottermq/goodiesdb/internal/core/command"
+	"github.com/ottermq/goodiesdb/internal/core/store"
+	"github.com/ottermq/goodiesdb/internal/logging"
+	"github.com/ottermq/goodiesdb/internal/persistence/aof"
+	"github.com/ottermq/goodiesdb/internal/persistence/rdb"
+	"github.com/ottermq/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/protocol/resp2"
 )
 
 // Server represents a TCP server

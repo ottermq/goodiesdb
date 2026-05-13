@@ -3,7 +3,7 @@ package command
 import (
 	"fmt"
 
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/protocol"
 )
 
 type PSubscribeCommand struct{}

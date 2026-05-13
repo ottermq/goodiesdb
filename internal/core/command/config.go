@@ -3,7 +3,7 @@ package command
 import (
 	"strings"
 
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/protocol"
 )
 
 type ConfigCommand struct{}

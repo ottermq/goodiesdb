@@ -4,7 +4,7 @@ import (
 	"encoding/gob"
 	"os"
 
-	"github.com/andrelcunha/goodiesdb/internal/core/store"
+	"github.com/ottermq/goodiesdb/internal/core/store"
 )
 
 func init() {

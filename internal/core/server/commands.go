@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/andrelcunha/goodiesdb/internal/logging"
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/logging"
+	"github.com/ottermq/goodiesdb/internal/protocol"
 )
 
 // Info returns server info

@@ -9,7 +9,7 @@ import (
 
 	redis "github.com/redis/go-redis/v9"
 
-	"github.com/andrelcunha/goodiesdb/internal/core/server"
+	"github.com/ottermq/goodiesdb/internal/core/server"
 )
 
 func TestPingAndSetGet(t *testing.T) {

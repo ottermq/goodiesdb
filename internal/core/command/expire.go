@@ -3,7 +3,7 @@ package command
 import (
 	"time"
 
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/protocol"
 )
 
 type ExpireCommand struct{}

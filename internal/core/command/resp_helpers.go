@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/protocol"
 )
 
 func valueToRESP(value any) protocol.RESPValue {

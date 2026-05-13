@@ -1,7 +1,7 @@
 # Goodies DB - A Redis implementation in Go
 
-[![Go](https://github.com/andrelcunha/goodiesdb/actions/workflows/go.yml/badge.svg)](https://github.com/andrelcunha/goodiesdb/actions/workflows/go.yml)
-[![Docker Image CI](https://github.com/andrelcunha/goodiesdb/actions/workflows/docker-image.yml/badge.svg)](https://github.com/andrelcunha/goodiesdb/actions/workflows/docker-image.yml)
+[![Go](https://github.com/ottermq/goodiesdb/actions/workflows/go.yml/badge.svg)](https://github.com/ottermq/goodiesdb/actions/workflows/go.yml)
+[![Docker Image CI](https://github.com/ottermq/goodiesdb/actions/workflows/docker-image.yml/badge.svg)](https://github.com/ottermq/goodiesdb/actions/workflows/docker-image.yml)
 
 GoodiesDb started as a Redis implementation written in Go, serving as an educational project to learn and understand the inner workings of Redis, a popular in-memory data structure store. The current state of the project implements a subset of Redis commands across strings, lists, hashes, key management, pub/sub, and server operations — see [Features](#features) for the full list.
 
@@ -50,7 +50,7 @@ To get started with GoodiesDB, follow these steps:
 1. **Clone the repository**:
 
     ```bash
-    git clone https://github.com/andrelcunha/goodiesdb.git
+    git clone https://github.com/ottermq/goodiesdb.git
     cd GoodiesDB
     ```
 

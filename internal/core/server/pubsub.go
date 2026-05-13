@@ -5,7 +5,7 @@ import (
 	"path"
 	"sync"
 
-	"github.com/andrelcunha/goodiesdb/internal/logging"
+	"github.com/ottermq/goodiesdb/internal/logging"
 )
 
 const pubsubDeliveryBufSize = 64
@@ -20,7 +20,7 @@ type PubSubBroker struct {
 	mu        sync.RWMutex
 	channels  map[string]map[net.Conn]bool // exact channel → set of subscribed conns
 	patterns  map[string]map[net.Conn]bool // glob pattern  → set of subscribed conns
-	connChans map[net.Conn]chan []byte      // conn → single delivery queue
+	connChans map[net.Conn]chan []byte     // conn → single delivery queue
 }
 
 func newPubSubBroker() *PubSubBroker {

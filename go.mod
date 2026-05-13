@@ -1,4 +1,4 @@
-module github.com/andrelcunha/goodiesdb
+module github.com/ottermq/goodiesdb
 
 go 1.23.3
 

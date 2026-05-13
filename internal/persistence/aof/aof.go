@@ -7,10 +7,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/andrelcunha/goodiesdb/internal/core/store"
-	"github.com/andrelcunha/goodiesdb/internal/logging"
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
-	"github.com/andrelcunha/goodiesdb/internal/protocol/resp2"
+	"github.com/ottermq/goodiesdb/internal/core/store"
+	"github.com/ottermq/goodiesdb/internal/logging"
+	"github.com/ottermq/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/protocol/resp2"
 )
 
 // AOFWriter writes commands to a file

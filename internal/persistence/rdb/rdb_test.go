@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andrelcunha/goodiesdb/internal/core/store"
-	"github.com/andrelcunha/goodiesdb/internal/persistence/aof"
+	"github.com/ottermq/goodiesdb/internal/core/store"
+	"github.com/ottermq/goodiesdb/internal/persistence/aof"
 )
 
 func TestSaveLoadSnapshot(t *testing.T) {

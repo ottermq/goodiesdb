@@ -5,8 +5,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/andrelcunha/goodiesdb/internal/core/store"
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/core/store"
+	"github.com/ottermq/goodiesdb/internal/protocol"
 )
 
 type Command interface {
@@ -28,16 +28,16 @@ type PubSubBroker interface {
 }
 
 type Context struct {
-	Store     *store.Store
-	DBIndex   int
-	Conn      net.Conn
-	Timestamp time.Time
-	Nil       func() protocol.RESPValue
-	Auth      func(password string) bool
-	SelectDB  func(dbIndex int) error
-	Info      func() protocol.BulkString
-	Protocol  protocol.Protocol
-	GetVersion  func() string
+	Store      *store.Store
+	DBIndex    int
+	Conn       net.Conn
+	Timestamp  time.Time
+	Nil        func() protocol.RESPValue
+	Auth       func(password string) bool
+	SelectDB   func(dbIndex int) error
+	Info       func() protocol.BulkString
+	Protocol   protocol.Protocol
+	GetVersion func() string
 	// Client command
 	GetConnID   func() int64
 	GetConnName func() string

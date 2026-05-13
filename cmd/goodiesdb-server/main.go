@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/andrelcunha/goodiesdb/internal/core/server"
-	"github.com/andrelcunha/goodiesdb/internal/logging"
 	"github.com/joho/godotenv"
+	"github.com/ottermq/goodiesdb/internal/core/server"
+	"github.com/ottermq/goodiesdb/internal/logging"
 )
 
 var version string = "v0.0.1"

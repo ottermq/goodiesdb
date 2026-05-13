@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/protocol"
 )
 
 func (*RESP2Protocol) parseSimpleString(reader *bufio.Reader) (protocol.SimpleString, error) {

@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andrelcunha/goodiesdb/internal/core/store"
-	"github.com/andrelcunha/goodiesdb/internal/protocol"
-	"github.com/andrelcunha/goodiesdb/internal/protocol/resp2"
-	"github.com/andrelcunha/goodiesdb/internal/utils/slice"
+	"github.com/ottermq/goodiesdb/internal/core/store"
+	"github.com/ottermq/goodiesdb/internal/protocol"
+	"github.com/ottermq/goodiesdb/internal/protocol/resp2"
+	"github.com/ottermq/goodiesdb/internal/utils/slice"
 )
 
 func TestRebuildStoreFromAOF(t *testing.T) {
